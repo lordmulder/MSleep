@@ -32,7 +32,7 @@ static __forceinline unsigned long parseULong(const wchar_t *str, unsigned long 
 	{
 		str++;
 	}
-	if(swscanf(str, _wcsnicmp(str, L"0x", 2) ? L"%llu %c" : L"%llx %c", &value, &c) != 1)
+	if(swscanf(str, _wcsnicmp(str, L"0x", 2) ? L"%I64u %c" : L"%I64x %c", &value, &c) != 1)
 	{
 		return EINVAL;
 	}
