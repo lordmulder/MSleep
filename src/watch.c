@@ -170,7 +170,7 @@ int wmain(int argc, wchar_t *argv[])
 		fputs("Wait until the file has changed. File changes are detected via \"archive\" bit.\n", stderr);
 		fputs("If initially the \"archive\" bit is already set, program terminates immeditely.\n\n", stderr);
 		fputs("Usage:\n   watch.exe [--clear] <file_name>\n\n", stderr);
-		fputs("With option \"--clear\", the archive bit is cleared after a change was dected!\n\n", stderr);
+		fputs("With option \"--clear\" the archive bit is cleared after a change was detected!\n\n", stderr);
 		return EXIT_FAILURE;
 	}
 
