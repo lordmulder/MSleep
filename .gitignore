@@ -1,6 +1,7 @@
 /*.sdf
 /*.suo
-/obj
-/bin
 /*.user
+/bin
 /ipch
+/obj
+/out

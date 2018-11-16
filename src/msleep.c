@@ -17,7 +17,9 @@
 
 //VC 6.0 workaround
 _CRTIMP extern FILE _iob[];
+#ifdef stderr
 #undef stderr
+#endif
 #define stderr (&_iob[2])
 
 /* ======================================================================= */
@@ -89,6 +91,7 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 	default:
 		return FALSE;
 	}
+
 	fflush(stderr);
 	_exit(2);
 	return TRUE;
@@ -102,31 +105,38 @@ int wmain(int argc, wchar_t *argv[])
 {
 	unsigned long timeout, delta;
 
+	//Initialize
 	SetErrorMode(SetErrorMode(0x0003) | 0x0003);
 	setlocale(LC_ALL, "C");
-	SetConsoleCtrlHandler(crtlHandler, 1);
+	SetConsoleCtrlHandler(crtlHandler, TRUE);
 
+	//Check command-line arguments
 	if (argc < 2)
 	{
-		fputs("msleep [" __DATE__ "]\n\nUsage:\n   msleep.exe <timeout_ms>\n\n", stderr);
-		return 1;
+		fputs("msleep [" __DATE__ "]\n\n", stderr);
+		fputs("Wait (sleep) for the specified amount of time, in milliseconds.\n", stderr);
+		fputs("Process creation overhead will be measured and compensated.\n\n", stderr);
+		fputs("Usage:\n   msleep.exe <timeout_ms>\n\n", stderr);
+		return EXIT_FAILURE;
 	}
 
+	//Parse timeout
 	switch (parseULong(argv[1], &timeout))
 	{
 	case EINVAL:
 		fputs("Error: Given timeout value could not be parsed!\n\n", stderr);
-		return 1;
+		return EXIT_FAILURE;
 	case ERANGE:
 		fputs("Error: Given timeout value is out of range!\n\n", stderr);
-		return 1;
+		return EXIT_FAILURE;
 	}
 
+	//Sleep remaining time
 	delta = computeDelta(getStartupTime(), getCurrentTime());
 	if (timeout >= delta)
 	{
 		Sleep(timeout - delta);
 	}
 
-	return 0;
+	return EXIT_SUCCESS;
 }
