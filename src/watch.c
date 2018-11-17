@@ -31,7 +31,7 @@ static __inline const DWORD getAttributes(const wchar_t *const filePath)
 {
 	DWORD loop, attribs;
 
-	for (loop = 0U; loop < 7U; ++loop)
+	for (loop = 0U; loop <= 13U; ++loop)
 	{
 		if (loop > 0U)
 		{
@@ -160,6 +160,13 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 /* MAIN                                                                    */
 /* ======================================================================= */
 
+#define TRY_PARSE_OPTION(NAME) \
+	if(!_wcsicmp(argv[pos], L"--" L#NAME)) \
+	{ \
+		NAME = TRUE; \
+		continue; \
+	}
+
 #define CHECK_IF_MODFIED() do \
 { \
 	if ((attribs = getAttributes(fullPath)) == INVALID_FILE_ATTRIBUTES) \
@@ -176,9 +183,9 @@ while(0)
 
 int wmain(int argc, wchar_t *argv[])
 {
-	int result = EXIT_FAILURE, clear = FALSE;
 	const wchar_t *fullPath = NULL, *directoryPath = NULL;
 	DWORD attribs = 0UL, status = 0UL;
+	int result = EXIT_FAILURE, clear = FALSE, reset = FALSE;
 	HANDLE watcher = INVALID_HANDLE_VALUE;
 
 	//Initialize
@@ -191,17 +198,31 @@ int wmain(int argc, wchar_t *argv[])
 	{
 		fputs("file change watcher [" __DATE__ "]\n\n", stderr);
 		fputs("Wait until the file has changed. File changes are detected via \"archive\" bit.\n", stderr);
-		fputs("If initially the \"archive\" bit is already set, program terminates immeditely.\n\n", stderr);
-		fputs("Usage:\n   watch.exe [--clear] <file_name>\n\n", stderr);
-		fputs("With option \"--clear\" the archive bit is cleared after a change was detected!\n\n", stderr);
+		fputs("The operating system sets the \"archive\" bit whenever a file is modified.\n", stderr);
+		fputs("If, initially, the \"archive\" bit is already set, program terminates promptly.\n\n", stderr);
+		fputs("Usage:\n", stderr);
+		fputs("   watch.exe [--clear] [--reset] <file_name>\n\n", stderr);
+		fputs("Options:\n", stderr);
+		fputs("   --clear  unset the \"archive\" bit *before* monitoring for changes\n", stderr);
+		fputs("   --reset  unset the \"archive\" bit *after* a change was detected\n\n", stderr);
 		goto cleanup;
 	}
 
-	//Clear archive bit?
-	clear = (argc > 2) && (!_wcsicmp(argv[1U], L"--clear"));
+	//Parse command-line arguments
+	if (argc > 2)
+	{
+		int pos;
+		for(pos = 1; pos < argc - 1; ++pos)
+		{
+			TRY_PARSE_OPTION(clear)
+			TRY_PARSE_OPTION(reset)
+			fprintf(stderr, "Error: Unknown option \"%S\" encountered!\n\n", argv[pos]);
+			goto cleanup;
+		}
+	}
 
 	//Get the full path
-	fullPath = getFullPath(argv[clear ? 2U : 1U]);
+	fullPath = getFullPath(argv[argc-1]);
 	if (!fullPath)
 	{
 		fputs("Error: Failed to get full path name!\n\n", stderr);
@@ -209,7 +230,17 @@ int wmain(int argc, wchar_t *argv[])
 	}
 
 	//Has file already been modified yet?
-	CHECK_IF_MODFIED();
+	if (!clear)
+	{
+		CHECK_IF_MODFIED();
+	}
+	else
+	{
+		if (!clearAttribute(fullPath, FILE_ATTRIBUTE_ARCHIVE))
+		{
+			fputs("Warning: Failed to clear archive bit!\n\n", stderr);
+		}
+	}
 
 	//Get directory path
 	directoryPath = getDirectoryPart(fullPath);
@@ -250,12 +281,12 @@ int wmain(int argc, wchar_t *argv[])
 	//Completed successfully
 success:
 	result = EXIT_SUCCESS;
-	if (clear)
+	if (reset)
 	{
 		Sleep(25); /*some extra delay*/
 		if (!clearAttribute(fullPath, FILE_ATTRIBUTE_ARCHIVE))
 		{
-			fputs("Warning: Failed to clear archive bit!\n\n", stderr);
+			fputs("Warning: Failed to reset archive bit!\n\n", stderr);
 		}
 	}
 

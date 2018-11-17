@@ -1,4 +1,4 @@
-Auxiliary tools for batch scripting,
+Auxiliary tools for supplementing batch scripting,
 created by LoRd_MuldeR <mulder2@gmx.de>
 
 This work is licensed under the CC0 1.0 Universal License.
@@ -17,12 +17,15 @@ Usage:
 
 -----------------------------------------------------------------------------
 
-file change watcher
+file change watcher [Nov 17 2018]
 
 Wait until the file has changed. File changes are detected via "archive" bit.
-If initially the "archive" bit is already set, program terminates immeditely.
+The operating system sets the "archive" bit whenever a file is modified.
+If, initially, the "archive" bit is already set, program terminates promptly.
 
 Usage:
-   watch.exe [--clear] <file_name>
+   watch.exe [--clear] [--reset] <file_name>
 
-With option "--clear" the archive bit is cleared after a change was detected!
+Options:
+   --clear  unset the "archive" bit *before* monitoring for changes
+   --reset  unset the "archive" bit *after* a change was detected
