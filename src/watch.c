@@ -260,8 +260,8 @@ int wmain(int argc, wchar_t *argv[])
 	for (;;)
 	{
 		//Wait for next event
-		status = WaitForSingleObject(watcher, INFINITE);
-		if (status != WAIT_OBJECT_0)
+		status = WaitForSingleObject(watcher, 2477U);
+		if ((status != WAIT_OBJECT_0) && (status != WAIT_TIMEOUT))
 		{
 			fputs("Error: Failed to wait for notification!\n\n", stderr);
 			goto cleanup;
@@ -270,11 +270,14 @@ int wmain(int argc, wchar_t *argv[])
 		//Has file been modified in the meantime?
 		CHECK_IF_MODFIED();
 
-		//Request next notification
-		if (!FindNextChangeNotification(watcher))
+		//Request next notification, iff we were notified before
+		if (status == WAIT_OBJECT_0)
 		{
-			fputs("Error: Failed to request next notification!\n\n", stderr);
-			goto cleanup;
+			if (!FindNextChangeNotification(watcher))
+			{
+				fputs("Error: Failed to request next notification!\n\n", stderr);
+				goto cleanup;
+			}
 		}
 	}
 
