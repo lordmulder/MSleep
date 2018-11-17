@@ -26,7 +26,7 @@ _CRTIMP extern FILE _iob[];
 /* UTILITY FUNCTIONS                                                       */
 /* ======================================================================= */
 
-static __forceinline unsigned long parseULong(const wchar_t *str, unsigned long *const out)
+static __inline unsigned long parseULong(const wchar_t *str, unsigned long *const out)
 {
 	unsigned long long value;
 	char c;
@@ -46,7 +46,7 @@ static __forceinline unsigned long parseULong(const wchar_t *str, unsigned long 
 	return 0;;
 }
 
-static __forceinline unsigned long long fileTimeToMSec(const FILETIME *const fileTime)
+static __inline unsigned long long fileTimeToMSec(const FILETIME *const fileTime)
 {
 	ULARGE_INTEGER tmp;
 	tmp.HighPart = fileTime->dwHighDateTime;
@@ -54,14 +54,14 @@ static __forceinline unsigned long long fileTimeToMSec(const FILETIME *const fil
 	return tmp.QuadPart;
 }
 
-static __forceinline unsigned long long getStartupTime(void)
+static __inline unsigned long long getStartupTime(void)
 {
 	FILETIME timeCreation, timeExit, timeKernel, timeUser;
 	GetProcessTimes(GetCurrentProcess(), &timeCreation, &timeExit, &timeKernel, &timeUser);
 	return fileTimeToMSec(&timeCreation);
 }
 
-static __forceinline unsigned long computeDelta(const unsigned long long begin, const unsigned long long end)
+static __inline unsigned long computeDelta(const unsigned long long begin, const unsigned long long end)
 {
 	if(end > begin)
 	{
@@ -71,7 +71,7 @@ static __forceinline unsigned long computeDelta(const unsigned long long begin, 
 	return 0UL;
 }
 
-static __forceinline unsigned long long getCurrentTime(void)
+static __inline unsigned long long getCurrentTime(void)
 {
 	FILETIME now;
 	GetSystemTimeAsFileTime(&now);
