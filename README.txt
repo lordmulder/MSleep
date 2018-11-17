@@ -17,7 +17,7 @@ Usage:
 
 -----------------------------------------------------------------------------
 
-file change watcher [Nov 17 2018]
+file change watcher
 
 Wait until the file has changed. File changes are detected via "archive" bit.
 The operating system sets the "archive" bit whenever a file is modified.
