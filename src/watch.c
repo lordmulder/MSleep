@@ -174,6 +174,11 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 		fprintf(stderr, "Error: File \"%S\" not found or access denied!\n\n", fullPath); \
 		goto cleanup; \
 	} \
+	if (attribs & FILE_ATTRIBUTE_DIRECTORY) \
+	{ \
+		fprintf(stderr, "Error: Path \"%S\" is a directory!\n\n", fullPath); \
+		goto cleanup; \
+	} \
 	if (attribs & FILE_ATTRIBUTE_ARCHIVE) \
 	{ \
 		goto success; \
@@ -246,10 +251,10 @@ int wmain(int argc, wchar_t *argv[])
 	directoryPath = getDirectoryPart(fullPath);
 
 	//Install file system watcher
-	watcher = FindFirstChangeNotificationW(directoryPath, FALSE, FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_LAST_WRITE);
+	watcher = FindFirstChangeNotificationW(directoryPath, FALSE, FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_LAST_WRITE);
 	if (watcher == INVALID_HANDLE_VALUE)
 	{
-		fputs("Error: Failed to install the file watcher!\n\n", stderr);
+		fputs("System Error: Failed to install the file watcher!\n\n", stderr);
 		goto cleanup;
 	}
 
@@ -260,11 +265,16 @@ int wmain(int argc, wchar_t *argv[])
 	for (;;)
 	{
 		//Wait for next event
-		status = WaitForSingleObject(watcher, 2477U);
+		status = WaitForSingleObject(watcher, 29989U);
 		if ((status != WAIT_OBJECT_0) && (status != WAIT_TIMEOUT))
 		{
-			fputs("Error: Failed to wait for notification!\n\n", stderr);
+			fputs("System Error: Failed to wait for notification!\n\n", stderr);
 			goto cleanup;
+		}
+
+		if (status == WAIT_OBJECT_0)
+		{
+			fputs("Notified !!!\n\n", stderr);
 		}
 
 		//Has file been modified in the meantime?
