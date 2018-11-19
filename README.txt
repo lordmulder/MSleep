@@ -8,24 +8,27 @@ https://creativecommons.org/publicdomain/zero/1.0/legalcode
 -----------------------------------------------------------------------------
 
 msleep
-
 Wait (sleep) for the specified amount of time, in milliseconds.
-Process creation overhead will be measured and compensated.
 
 Usage:
    msleep.exe <timeout_ms>
 
+Note: Process creation overhead will be measured and compensated.
+
 -----------------------------------------------------------------------------
 
 file change watcher
-
-Wait until the file has changed. File changes are detected via "archive" bit.
-The operating system sets the "archive" bit whenever a file is modified.
-If, initially, the "archive" bit is already set, program terminates promptly.
+Wait until a file is changed. File changes are detected via "archive" bit.
 
 Usage:
-   watch.exe [--clear] [--reset] <file_name>
+   watch.exe [options] <filename_1> [<filename_2> ... <filename_N>]
 
 Options:
-   --clear  unset the "archive" bit *before* monitoring for changes
-   --reset  unset the "archive" bit *after* a change was detected
+   --clear  unset the "archive" bit *before* monitoring for file changes
+   --reset  unset the "archive" bit *after* a file change was detected
+   --quiet  do *not* print the file name that changed to standard output
+
+Remarks:
+   The operating system sets the "archive" bit whenever a file is changed.
+   If, initially, the "archive" bit is set, program terminates right away.
+   If *multiple* files are given, program terminates on *any* file change.

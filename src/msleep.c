@@ -16,11 +16,13 @@
 #include <Windows.h>
 
 //VC 6.0 workaround
+#ifdef ENABLE_VC6_WORKAROUNDS
 _CRTIMP extern FILE _iob[];
-#ifdef stderr
+#undef stdout
 #undef stderr
-#endif
+#define stdout (&_iob[1])
 #define stderr (&_iob[2])
+#endif //ENABLE_VC6_WORKAROUNDS
 
 /* ======================================================================= */
 /* UTILITY FUNCTIONS                                                       */
@@ -113,10 +115,10 @@ int wmain(int argc, wchar_t *argv[])
 	//Check command-line arguments
 	if (argc < 2)
 	{
-		fputs("msleep [" __DATE__ "]\n\n", stderr);
-		fputs("Wait (sleep) for the specified amount of time, in milliseconds.\n", stderr);
-		fputs("Process creation overhead will be measured and compensated.\n\n", stderr);
+		fputs("msleep [" __DATE__ "]\n", stderr);
+		fputs("Wait (sleep) for the specified amount of time, in milliseconds.\n\n", stderr);
 		fputs("Usage:\n   msleep.exe <timeout_ms>\n\n", stderr);
+		fputs("Note: Process creation overhead will be measured and compensated.\n\n", stderr);
 		return EXIT_FAILURE;
 	}
 
