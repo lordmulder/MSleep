@@ -94,18 +94,20 @@ static __inline BOOL resizeBuffer(wchar_t **const buffer, size_t *const size, co
 	return TRUE; /*success*/
 }
 
-static __inline const wchar_t* getFullPath(const wchar_t *const fileName)
+static __inline const wchar_t* getFullPath(const wchar_t *const fileName, DWORD *const error)
 {
 	int loop;
 	wchar_t *buffer = NULL;
 	size_t size = 0UL;
+	*error = (DWORD)(-1L);
 
 	for(loop = 0; loop < 7; ++loop)
 	{
 		//Try to get full path name
-		const DWORD result = GetFullPathNameW(fileName, size, buffer, NULL);
+		const DWORD result = GetLongPathNameW(fileName, buffer, size);
 		if (result < 1U)
 		{
+			*error = GetLastError();
 			goto failure;
 		}
 
@@ -114,11 +116,13 @@ static __inline const wchar_t* getFullPath(const wchar_t *const fileName)
 		{
 			if (!resizeBuffer(&buffer, &size, result))
 			{
+				*error = ERROR_OUTOFMEMORY;
 				goto failure;
 			}
 			continue;
 		}
 
+		*error = ERROR_SUCCESS;
 		return buffer; /*success*/
 	}
 
@@ -129,6 +133,25 @@ failure:
 	}
 
 	return NULL; /*failure*/
+}
+
+static void printFilePathError(const DWORD error, const wchar_t *const fileName)
+{
+	switch(error)
+	{
+	case ERROR_FILE_NOT_FOUND:
+	case ERROR_PATH_NOT_FOUND:
+		fprintf(stderr, "Error: File name \"%S\" could not be found!\n\n", fileName);
+		break;
+	case ERROR_ACCESS_DENIED:
+		fprintf(stderr, "Error: Access to file \"%S\" was denied!\n\n", fileName);
+		break;
+	case ERROR_OUTOFMEMORY:
+		fputs("Error: Out of memory!\n\n", stderr);
+		break;
+	default:
+		fprintf(stderr, "Error: Path \"%S\" could not be normalized!\n\n", fileName);
+	}
 }
 
 static __inline const wchar_t* getDirectoryPart(const wchar_t *const fullPath)
@@ -167,10 +190,10 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 /* ======================================================================= */
 
 #define TRY_PARSE_OPTION(NAME) \
-	if(!_wcsicmp(argv[fileNameOffset] + 2U, L#NAME)) \
+	if(!_wcsicmp(argv[argOffset] + 2U, L#NAME)) \
 	{ \
 		NAME = TRUE; \
-		++fileNameOffset; \
+		++argOffset; \
 		continue; \
 	}
 
@@ -190,7 +213,7 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 	{ \
 		if(!quiet) \
 		{ \
-			fputws(fullPath[(IDX)], stdout); \
+			fwprintf(stdout, L"%s\n", fullPath[(IDX)]); \
 		} \
 		goto success; \
 	} \
@@ -199,12 +222,13 @@ while(0)
 
 static const wchar_t *fullPath[MAXIMUM_WAIT_OBJECTS];
 static const wchar_t* directoryPath[MAXIMUM_WAIT_OBJECTS];
-static HANDLE watcher[MAXIMUM_WAIT_OBJECTS];
+static int fileToDirMap[MAXIMUM_WAIT_OBJECTS];
+static HANDLE notifyHandle[MAXIMUM_WAIT_OBJECTS];
 
 int wmain(int argc, wchar_t *argv[])
 {
 	DWORD attribs = 0UL, status = 0UL;
-	int result = EXIT_FAILURE, fileNameOffset = 1, fileCount = 0, fileIdx = 0;
+	int result = EXIT_FAILURE, argOffset = 1, fileCount = 0, fileIdx = 0, dirCount = 0, dirIdx = 0;
 	BOOL clear = FALSE, reset = FALSE, quiet = FALSE;
 
 	//Initialize
@@ -232,38 +256,57 @@ int wmain(int argc, wchar_t *argv[])
 	}
 
 	//Parse command-line arguments
-	while ((fileNameOffset < argc) && (!wcsncmp(argv[fileNameOffset], L"--", 2)))
+	while ((argOffset < argc) && (!wcsncmp(argv[argOffset], L"--", 2)))
 	{
-		if(!argv[fileNameOffset][2U])
+		if(!argv[argOffset][2U])
 		{
 			break; /*stop argument parsing*/
 		}
 		TRY_PARSE_OPTION(clear)
 		TRY_PARSE_OPTION(reset)
 		TRY_PARSE_OPTION(quiet)
-		fprintf(stderr, "Error: Unknown option \"%S\" encountered!\n\n", argv[fileNameOffset]);
+		fprintf(stderr, "Error: Unknown option \"%S\" encountered!\n\n", argv[argOffset]);
 		goto cleanup;
 	}
 
 	//Check file count
-	if((fileCount = (argc - fileNameOffset)) <= 0)
+	if (argOffset >= argc)
 	{
 		fputs("Error: No file name(s) specified. Nothing to do!\n\n", stderr);
 		goto cleanup;
 	}
-	if(fileCount > MAXIMUM_WAIT_OBJECTS)
+	if ((argc - argOffset) > MAXIMUM_WAIT_OBJECTS)
 	{
 		fprintf(stderr, "Error: Too many file name(s) specified! (limit: %d)\n\n", MAXIMUM_WAIT_OBJECTS);
 		goto cleanup;
 	}
 
-	//Get the full path(s)
-	for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
+	//Get the full path(s) of input files
+	while (argOffset < argc)
 	{
-		if (!(fullPath[fileIdx] = getFullPath(argv[fileNameOffset + fileIdx])))
+		BOOL duplicate = FALSE;
+		DWORD error = 0L;
+		const wchar_t *const fullPathNext = getFullPath(argv[argOffset++], &error);
+		if (!fullPathNext)
 		{
-			fputs("Error: Failed to get full path name!\n\n", stderr);
+			printFilePathError(error, argv[argOffset-1]);
 			goto cleanup;
+		}
+		for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
+		{
+			if(!wcscmp(fullPathNext, fullPath[fileIdx]))
+			{
+				duplicate = TRUE;
+				break;
+			}
+		}
+		if(!duplicate)
+		{
+			fullPath[fileCount++] = fullPathNext;
+		}
+		else
+		{
+			free((void*)fullPathNext); /*skip duplicate file*/
 		}
 	}
 
@@ -286,21 +329,55 @@ int wmain(int argc, wchar_t *argv[])
 		}
 	}
 
-	//Get directory path
+	//Get directory part of path(s)
 	for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 	{
-		if(!(directoryPath[fileIdx] = getDirectoryPart(fullPath[fileIdx])))
+		BOOL duplicate = FALSE;
+		const wchar_t *const directoryNext = getDirectoryPart(fullPath[fileIdx]);
+		if(!directoryNext)
 		{
-			fputs("Error: Failed to get directory part!\n\n", stderr);
+			fprintf(stderr, "Error: Directory part of \"%S\" could not be determined!\n\n", fullPath[fileIdx]);
 			goto cleanup;
+		}
+		for(dirIdx = 0; dirIdx < dirCount; ++dirIdx)
+		{
+			if(!wcscmp(directoryNext, directoryPath[dirIdx]))
+			{
+				duplicate = TRUE;
+				fileToDirMap[fileIdx] = dirIdx;
+				break;
+			}
+		}
+		if(!duplicate)
+		{
+			fileToDirMap[fileIdx] = dirCount;
+			directoryPath[dirCount++] = directoryNext;
+		}
+		else
+		{
+			free((void*)directoryNext); /*skip duplicate directory*/
 		}
 	}
 
-	//Install file system watcher
-	for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
+#ifndef NDEBUG
+	for(dirIdx = 0; dirIdx < dirCount; ++dirIdx)
 	{
-		watcher[fileIdx] = FindFirstChangeNotificationW(directoryPath[fileIdx], FALSE, NOTIFY_FLAGS);
-		if (watcher[fileIdx] == INVALID_HANDLE_VALUE)
+		fprintf(stderr, "%S\n", directoryPath[dirIdx]);
+		for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
+		{
+			if(fileToDirMap[fileIdx] == dirIdx)
+			{
+				fprintf(stderr, "--> %S\n", fullPath[fileIdx]);
+			}
+		}
+	}
+#endif //NDEBUG
+
+	//Install file system watcher
+	for(dirIdx = 0; dirIdx < dirCount; ++dirIdx)
+	{
+		notifyHandle[dirIdx] = FindFirstChangeNotificationW(directoryPath[dirIdx], FALSE, NOTIFY_FLAGS);
+		if (notifyHandle[dirIdx] == INVALID_HANDLE_VALUE)
 		{
 			fputs("System Error: Failed to install the file watcher!\n\n", stderr);
 			goto cleanup;
@@ -317,15 +394,21 @@ int wmain(int argc, wchar_t *argv[])
 	for (;;)
 	{
 		//Wait for next event
-		status = WaitForMultipleObjects(fileCount, watcher, FALSE, 29989U);
+		status = WaitForMultipleObjects(dirCount, notifyHandle, FALSE, 29989U);
 		if ((status >= WAIT_OBJECT_0) && (status < (WAIT_OBJECT_0 + MAXIMUM_WAIT_OBJECTS)))
 		{
-			//Has the file been modified?
-			const DWORD notifyIdx = (status - WAIT_OBJECT_0);
-			CHECK_IF_MODFIED(notifyIdx);
+			//Has any file been modified?
+			const DWORD notifyIdx = status - WAIT_OBJECT_0;
+			for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
+			{
+				if(fileToDirMap[fileIdx] == notifyIdx)
+				{
+					CHECK_IF_MODFIED(fileIdx);
+				}
+			}
 
 			//Request the *next* notification
-			if (!FindNextChangeNotification(watcher[notifyIdx]))
+			if (!FindNextChangeNotification(notifyHandle[notifyIdx]))
 			{
 				fputs("Error: Failed to request next notification!\n\n", stderr);
 				goto cleanup;
@@ -363,11 +446,15 @@ success:
 
 	//Perform final clean-up
 cleanup:
-	for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
+	for(dirIdx = 0; dirIdx < dirCount; ++dirIdx)
 	{
-		if (watcher[fileIdx] && (watcher[fileIdx] != INVALID_HANDLE_VALUE))
+		if (notifyHandle[dirIdx] && (notifyHandle[dirIdx] != INVALID_HANDLE_VALUE))
 		{
-			FindCloseChangeNotification(watcher[fileIdx]);
+			FindCloseChangeNotification(notifyHandle[dirIdx]);
+		}
+		if(directoryPath[dirIdx])
+		{
+			free((void*)directoryPath[dirIdx]);
 		}
 	}
 	for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
@@ -376,10 +463,7 @@ cleanup:
 		{
 			free((void*)fullPath[fileIdx]);
 		}
-		if(directoryPath[fileIdx])
-		{
-			free((void*)directoryPath[fileIdx]);
-		}
+
 	}
 
 	return result; /*exit*/
