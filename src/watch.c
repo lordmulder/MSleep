@@ -141,16 +141,17 @@ static void printFilePathError(const DWORD error, const wchar_t *const fileName)
 	{
 	case ERROR_FILE_NOT_FOUND:
 	case ERROR_PATH_NOT_FOUND:
-		fprintf(stderr, "Error: File name \"%S\" could not be found!\n\n", fileName);
+		fwprintf(stderr, L"Error: File name \"%s\" could not be found!\n", fileName);
 		break;
 	case ERROR_ACCESS_DENIED:
-		fprintf(stderr, "Error: Access to file \"%S\" was denied!\n\n", fileName);
+		fwprintf(stderr, L"Error: Access to file \"%s\" was denied!\n", fileName);
 		break;
+	case ERROR_NOT_ENOUGH_MEMORY:
 	case ERROR_OUTOFMEMORY:
-		fputs("Error: Out of memory!\n\n", stderr);
+		fputws(L"Error: Out of memory!\n", stderr);
 		break;
 	default:
-		fprintf(stderr, "Error: Path \"%S\" could not be normalized!\n\n", fileName);
+		fwprintf(stderr, L"Error: Path \"%s\" could not be normalized!\n", fileName);
 	}
 }
 
@@ -171,10 +172,10 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 	switch (dwCtrlTyp)
 	{
 	case CTRL_C_EVENT:
-		fputs("Ctrl+C: Watcher has been interrupted !!!\n\n", stderr);
+		fputws(L"Ctrl+C: Watcher has been interrupted !!!\n", stderr);
 		break;
 	case CTRL_BREAK_EVENT:
-		fputs("Break: Watcher has been interrupted !!!\n\n", stderr);
+		fputws(L"Break: Watcher has been interrupted !!!\n", stderr);
 		break;
 	default:
 		return FALSE;
@@ -201,12 +202,12 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 { \
 	if ((attribs = getAttributes(fullPath[(IDX)])) == INVALID_FILE_ATTRIBUTES) \
 	{ \
-		fprintf(stderr, "Error: File \"%S\" not found or access denied!\n\n", fullPath[(IDX)]); \
+		fwprintf(stderr, L"Error: File \"%s\" not found or access denied!\n", fullPath[(IDX)]); \
 		goto cleanup; \
 	} \
 	if (attribs & FILE_ATTRIBUTE_DIRECTORY) \
 	{ \
-		fprintf(stderr, "Error: Path \"%S\" is a directory!\n\n", fullPath[(IDX)]); \
+		fwprintf(stderr, L"Error: Path \"%s\" is a directory!\n", fullPath[(IDX)]); \
 		goto cleanup; \
 	} \
 	if (attribs & FILE_ATTRIBUTE_ARCHIVE) \
@@ -220,9 +221,22 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 } \
 while(0)
 
+#define APPEND_TO_MAP(IDX,VALUE) do \
+{ \
+	dirToFilesMap[(IDX)].files[dirToFilesMap[(IDX)].count++] = (VALUE); \
+} \
+while(0)
+
+typedef struct
+{
+	int count;
+	int files[MAXIMUM_WAIT_OBJECTS];
+}
+fileIndex_list;
+
 static const wchar_t *fullPath[MAXIMUM_WAIT_OBJECTS];
 static const wchar_t* directoryPath[MAXIMUM_WAIT_OBJECTS];
-static int fileToDirMap[MAXIMUM_WAIT_OBJECTS];
+static fileIndex_list dirToFilesMap[MAXIMUM_WAIT_OBJECTS];
 static HANDLE notifyHandle[MAXIMUM_WAIT_OBJECTS];
 
 int wmain(int argc, wchar_t *argv[])
@@ -236,22 +250,23 @@ int wmain(int argc, wchar_t *argv[])
 	setlocale(LC_ALL, "C");
 	SetConsoleCtrlHandler(crtlHandler, TRUE);
 	_setmode(_fileno(stdout), _O_U8TEXT);
+	_setmode(_fileno(stderr), _O_U8TEXT);
 
 	//Check command-line arguments
 	if (argc < 2)
 	{
-		fputs("file change watcher [" __DATE__ "]\n", stderr);
-		fputs("Wait until a file is changed. File changes are detected via \"archive\" bit.\n\n", stderr);
-		fputs("Usage:\n", stderr);
-		fputs("   watch.exe [options] <filename_1> [<filename_2> ... <filename_N>]\n\n", stderr);
-		fputs("Options:\n", stderr);
-		fputs("   --clear  unset the \"archive\" bit *before* monitoring for file changes\n", stderr);
-		fputs("   --reset  unset the \"archive\" bit *after* a file change was detected\n", stderr);
-		fputs("   --quiet  do *not* print the file name that changed to standard output\n\n", stderr);
-		fputs("Remarks:\n", stderr);
-		fputs("   The operating system sets the \"archive\" bit whenever a file is changed.\n", stderr);
-		fputs("   If, initially, the \"archive\" bit is set, program terminates right away.\n", stderr);
-		fputs("   If *multiple* files are given, program terminates on *any* file change.\n\n", stderr);
+		fputws(L"file change watcher [" TEXT(__DATE__) L"]\n", stderr);
+		fputws(L"Wait until a file is changed. File changes are detected via \"archive\" bit.\n\n", stderr);
+		fputws(L"Usage:\n", stderr);
+		fputws(L"   watch.exe [options] <filename_1> [<filename_2> ... <filename_N>]\n\n", stderr);
+		fputws(L"Options:\n", stderr);
+		fputws(L"   --clear  unset the \"archive\" bit *before* monitoring for file changes\n", stderr);
+		fputws(L"   --reset  unset the \"archive\" bit *after* a file change was detected\n", stderr);
+		fputws(L"   --quiet  do *not* print the file name that changed to standard output\n\n", stderr);
+		fputws(L"Remarks:\n", stderr);
+		fputws(L"   The operating system sets the \"archive\" bit whenever a file is changed.\n", stderr);
+		fputws(L"   If, initially, the \"archive\" bit is set, program terminates right away.\n", stderr);
+		fputws(L"   If *multiple* files are given, program terminates on *any* file change.\n", stderr);
 		goto cleanup;
 	}
 
@@ -265,19 +280,19 @@ int wmain(int argc, wchar_t *argv[])
 		TRY_PARSE_OPTION(clear)
 		TRY_PARSE_OPTION(reset)
 		TRY_PARSE_OPTION(quiet)
-		fprintf(stderr, "Error: Unknown option \"%S\" encountered!\n\n", argv[argOffset]);
+		fwprintf(stderr, L"Error: Unknown option \"%s\" encountered!\n", argv[argOffset]);
 		goto cleanup;
 	}
 
 	//Check file count
 	if (argOffset >= argc)
 	{
-		fputs("Error: No file name(s) specified. Nothing to do!\n\n", stderr);
+		fputws(L"Error: No file name(s) specified. Nothing to do!\n", stderr);
 		goto cleanup;
 	}
 	if ((argc - argOffset) > MAXIMUM_WAIT_OBJECTS)
 	{
-		fprintf(stderr, "Error: Too many file name(s) specified! (limit: %d)\n\n", MAXIMUM_WAIT_OBJECTS);
+		fwprintf(stderr, L"Error: Too many file name(s) specified! [limit: %d]\n", MAXIMUM_WAIT_OBJECTS);
 		goto cleanup;
 	}
 
@@ -324,7 +339,7 @@ int wmain(int argc, wchar_t *argv[])
 		{
 			if (!clearAttribute(fullPath[fileIdx], FILE_ATTRIBUTE_ARCHIVE))
 			{
-				fprintf(stderr, "Warning: File \"%S\" could not be cleared!\n\n", fullPath[fileIdx]);
+				fwprintf(stderr, L"Warning: File \"%s\" could not be cleared!\n", fullPath[fileIdx]);
 			}
 		}
 	}
@@ -336,7 +351,7 @@ int wmain(int argc, wchar_t *argv[])
 		const wchar_t *const directoryNext = getDirectoryPart(fullPath[fileIdx]);
 		if(!directoryNext)
 		{
-			fprintf(stderr, "Error: Directory part of \"%S\" could not be determined!\n\n", fullPath[fileIdx]);
+			fwprintf(stderr, L"Error: Directory part of \"%s\" could not be determined!\n", fullPath[fileIdx]);
 			goto cleanup;
 		}
 		for(dirIdx = 0; dirIdx < dirCount; ++dirIdx)
@@ -344,13 +359,13 @@ int wmain(int argc, wchar_t *argv[])
 			if(!wcscmp(directoryNext, directoryPath[dirIdx]))
 			{
 				duplicate = TRUE;
-				fileToDirMap[fileIdx] = dirIdx;
+				APPEND_TO_MAP(dirIdx, fileIdx);
 				break;
 			}
 		}
 		if(!duplicate)
 		{
-			fileToDirMap[fileIdx] = dirCount;
+			APPEND_TO_MAP(dirCount, fileIdx);
 			directoryPath[dirCount++] = directoryNext;
 		}
 		else
@@ -362,13 +377,10 @@ int wmain(int argc, wchar_t *argv[])
 #ifndef NDEBUG
 	for(dirIdx = 0; dirIdx < dirCount; ++dirIdx)
 	{
-		fprintf(stderr, "%S\n", directoryPath[dirIdx]);
-		for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
+		fwprintf(stderr, L"%d: %s\n", dirIdx, directoryPath[dirIdx]);
+		for(fileIdx = 0; fileIdx < dirToFilesMap[dirIdx].count; ++fileIdx)
 		{
-			if(fileToDirMap[fileIdx] == dirIdx)
-			{
-				fprintf(stderr, "--> %S\n", fullPath[fileIdx]);
-			}
+			fwprintf(stderr, L"--> %d: %s\n", fileIdx, fullPath[dirToFilesMap[dirIdx].files[fileIdx]]);
 		}
 	}
 #endif //NDEBUG
@@ -379,7 +391,7 @@ int wmain(int argc, wchar_t *argv[])
 		notifyHandle[dirIdx] = FindFirstChangeNotificationW(directoryPath[dirIdx], FALSE, NOTIFY_FLAGS);
 		if (notifyHandle[dirIdx] == INVALID_HANDLE_VALUE)
 		{
-			fputs("System Error: Failed to install the file watcher!\n\n", stderr);
+			fputws(L"System Error: Failed to install the file watcher!\n", stderr);
 			goto cleanup;
 		}
 	}
@@ -399,18 +411,15 @@ int wmain(int argc, wchar_t *argv[])
 		{
 			//Has any file been modified?
 			const DWORD notifyIdx = status - WAIT_OBJECT_0;
-			for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
+			for(fileIdx = 0; fileIdx < dirToFilesMap[notifyIdx].count; ++fileIdx)
 			{
-				if(fileToDirMap[fileIdx] == notifyIdx)
-				{
-					CHECK_IF_MODFIED(fileIdx);
-				}
+				CHECK_IF_MODFIED(dirToFilesMap[notifyIdx].files[fileIdx]);
 			}
 
 			//Request the *next* notification
 			if (!FindNextChangeNotification(notifyHandle[notifyIdx]))
 			{
-				fputs("Error: Failed to request next notification!\n\n", stderr);
+				fputws(L"Error: Failed to request next notification!\n", stderr);
 				goto cleanup;
 			}
 		}
@@ -424,7 +433,7 @@ int wmain(int argc, wchar_t *argv[])
 		}
 		else
 		{
-			fputs("System Error: Failed to wait for notification!\n\n", stderr);
+			fputws(L"System Error: Failed to wait for notification!\n", stderr);
 			goto cleanup;
 		}
 	}
@@ -439,7 +448,7 @@ success:
 		{
 			if (!clearAttribute(fullPath[fileIdx], FILE_ATTRIBUTE_ARCHIVE))
 			{
-				fprintf(stderr, "Warning: File \"%S\" could not be reset!\n\n", fullPath[fileIdx]);
+				fwprintf(stderr, L"Warning: File \"%s\" could not be reset!\n", fullPath[fileIdx]);
 			}
 		}
 	}
