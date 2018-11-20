@@ -270,12 +270,13 @@ int wmain(int argc, wchar_t *argv[])
 		goto cleanup;
 	}
 
-	//Parse command-line arguments
+	//Parse command-line options
 	while ((argOffset < argc) && (!wcsncmp(argv[argOffset], L"--", 2)))
 	{
 		if(!argv[argOffset][2U])
 		{
-			break; /*stop argument parsing*/
+			++argOffset;
+			break; /*stop option parsing*/
 		}
 		TRY_PARSE_OPTION(clear)
 		TRY_PARSE_OPTION(reset)
@@ -284,7 +285,7 @@ int wmain(int argc, wchar_t *argv[])
 		goto cleanup;
 	}
 
-	//Check file count
+	//Check remaining file count
 	if (argOffset >= argc)
 	{
 		fputws(L"Error: No file name(s) specified. Nothing to do!\n", stderr);
