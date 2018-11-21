@@ -28,8 +28,6 @@ _CRTIMP extern FILE _iob[];
 #define stderr (&_iob[2])
 #endif //ENABLE_VC6_WORKAROUNDS
 
-#define NOTIFY_FLAGS (FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_LAST_WRITE)
-
 /* ======================================================================= */
 /* UTILITY FUNCTIONS                                                       */
 /* ======================================================================= */
@@ -95,51 +93,46 @@ static __inline BOOL resizeBuffer(wchar_t **const buffer, size_t *const size, co
 	return TRUE; /*success*/
 }
 
-static __inline const wchar_t* getFinalPath(const wchar_t *const fileName, DWORD *const error)
+static __inline const wchar_t* getCanonicalPath(const wchar_t *const fileName)
 {
-	typedef DWORD (__stdcall *PGETFINALPATHNAMEBYHANDLEW)(HANDLE hFile, LPWSTR lpszFilePath, DWORD cchFilePath, DWORD dwFlags);
-	static BOOL initialized = FALSE;
+	typedef DWORD (WINAPI *PGETFINALPATHNAMEBYHANDLEW)(HANDLE hFile, LPWSTR lpszFilePath, DWORD cchFilePath, DWORD dwFlags);
+	static volatile LONG initialized = 0L;
 	static PGETFINALPATHNAMEBYHANDLEW getFinalPathNameByHandleW = NULL;
 
-	int loop;
+	LONG loop = 0L;
 	wchar_t *buffer = NULL;
 	size_t size = 0UL;
-	HANDLE h = INVALID_HANDLE_VALUE;
-	*error = (DWORD)(-1L);
+	HANDLE handle = NULL;
 
 	//Initialize on first call
-	if(!initialized)
+	while((loop = InterlockedCompareExchange(&initialized, -1L, 0L)) != 1L)
 	{
-		const HMODULE kernel32 = GetModuleHandleW(L"kernel32.dll");
-		if(kernel32)
+		if(!loop) /*first thread initialzes*/
 		{
-			getFinalPathNameByHandleW = (PGETFINALPATHNAMEBYHANDLEW) GetProcAddress(kernel32, "GetFinalPathNameByHandleW");
+			getFinalPathNameByHandleW = (PGETFINALPATHNAMEBYHANDLEW) GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetFinalPathNameByHandleW");
+			InterlockedExchange(&initialized, 1L);
 		}
-		initialized = TRUE;
 	}
 
 	//Check availability
 	if(!getFinalPathNameByHandleW)
 	{
-		*error = ERROR_PROC_NOT_FOUND; /*unavailable!*/
-		goto failure;
+		goto failure; /*GetFinalPathNameByHandleW unavailable!*/
 	}
 
 	//Try to open file
-	h = CreateFileW(fileName, FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
-	if (h == INVALID_HANDLE_VALUE)
+	handle = CreateFileW(fileName, FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+	if (handle == INVALID_HANDLE_VALUE)
 	{
-		*error = GetLastError();
 		goto failure;
 	}
 
-	for(loop = 0; loop < 3; ++loop)
+	for(loop = 0L; loop < 3L; ++loop)
 	{
 		//Try to get full path name
-		const DWORD result = getFinalPathNameByHandleW(h, buffer, size, VOLUME_NAME_DOS);
+		const DWORD result = getFinalPathNameByHandleW(handle, buffer, size, VOLUME_NAME_DOS);
 		if (result < 1U)
 		{
-			*error = GetLastError();
 			goto failure;
 		}
 
@@ -148,14 +141,13 @@ static __inline const wchar_t* getFinalPath(const wchar_t *const fileName, DWORD
 		{
 			if (!resizeBuffer(&buffer, &size, result))
 			{
-				*error = ERROR_OUTOFMEMORY;
 				goto failure;
 			}
 			continue;
 		}
 
-		//Close file handle
-		CloseHandle(h);
+		//Close file handle now!
+		CloseHandle(handle);
 
 		//Remove "//?/" prefix, iff safe
 		if ((result > 6U) && ((result - 4U) < MAX_PATH) && (!wcsncmp(buffer, L"\\\\?\\", 4U)) && iswalpha(buffer[4U]) && (!wcsncmp(buffer + 5U, L":\\", 2U)))
@@ -163,53 +155,6 @@ static __inline const wchar_t* getFinalPath(const wchar_t *const fileName, DWORD
 			wmemmove(buffer, buffer + 4U, result - 3U); 
 		}
 
-		//Clean-up and return
-		*error = ERROR_SUCCESS;
-		return buffer;
-	}
-
-failure:
-	if (buffer)
-	{
-		free(buffer);
-	}
-	if (h != INVALID_HANDLE_VALUE)
-	{
-		CloseHandle(h);
-	}
-
-	return NULL; /*failure*/
-}
-
-static __inline const wchar_t* getFullPath(const wchar_t *const fileName, DWORD *const error)
-{
-	int loop;
-	wchar_t *buffer = NULL;
-	size_t size = 0UL;
-	*error = (DWORD)(-1L);
-
-	for(loop = 0; loop < 3; ++loop)
-	{
-		//Try to get full path name
-		const DWORD result = GetFullPathNameW(fileName, size, buffer, NULL);
-		if (result < 1U)
-		{
-			*error = GetLastError();
-			goto failure;
-		}
-
-		//Increase buffer size as needed
-		if (result > size)
-		{
-			if (!resizeBuffer(&buffer, &size, result))
-			{
-				*error = ERROR_OUTOFMEMORY;
-				goto failure;
-			}
-			continue;
-		}
-
-		*error = ERROR_SUCCESS;
 		return buffer; /*success*/
 	}
 
@@ -218,41 +163,12 @@ failure:
 	{
 		free(buffer);
 	}
+	if (handle && (handle != INVALID_HANDLE_VALUE))
+	{
+		CloseHandle(handle);
+	}
 
 	return NULL; /*failure*/
-}
-
-static __inline const wchar_t* getNormalizedPath(const wchar_t *const fileName, DWORD *const error)
-{
-	const wchar_t *normalizedPath = getFinalPath(fileName, error);
-	if((!normalizedPath) && (*error == ERROR_PROC_NOT_FOUND))
-	{
-		normalizedPath = getFullPath(fileName, error);
-	}
-	return normalizedPath;
-}
-
-static void printFilePathError(const DWORD error, const wchar_t *const fileName)
-{
-	switch(error)
-	{
-	case ERROR_FILE_NOT_FOUND:
-	case ERROR_PATH_NOT_FOUND:
-		fwprintf(stderr, L"Error: File name \"%s\" could not be found!\n", fileName);
-		break;
-	case ERROR_ACCESS_DENIED:
-		fwprintf(stderr, L"Error: Access to file \"%s\" was denied!\n", fileName);
-		break;
-	case ERROR_NOT_ENOUGH_MEMORY:
-	case ERROR_OUTOFMEMORY:
-		fputws(L"Error: Out of memory!\n", stderr);
-		break;
-	case ERROR_INVALID_NAME:
-		fwprintf(stderr, L"Error: File name \"%s\" is invalid!\n", fileName);
-		break;
-	default:
-		fwprintf(stderr, L"Error: Path \"%s\" could not be resolved!\n", fileName);
-	}
 }
 
 static __inline const wchar_t* getDirectoryPart(const wchar_t *const fullPath)
@@ -290,11 +206,13 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 /* HELPER MACROS AND TYPES                                                 */
 /* ======================================================================= */
 
+#define MAXIMUM_FILES 32 /*maximum number of files*/
+#define NOTIFY_FLAGS (FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_LAST_WRITE)
+
 #define TRY_PARSE_OPTION(NAME) \
 	if(!_wcsicmp(argv[argOffset] + 2U, L#NAME)) \
 	{ \
 		NAME = TRUE; \
-		++argOffset; \
 		continue; \
 	}
 
@@ -330,7 +248,7 @@ while(0)
 typedef struct
 {
 	int count;
-	int files[MAXIMUM_WAIT_OBJECTS];
+	int files[MAXIMUM_FILES];
 }
 fileIndex_list;
 
@@ -339,10 +257,10 @@ fileIndex_list;
 /* ======================================================================= */
 
 /*Globals*/
-static const wchar_t *fullPath[MAXIMUM_WAIT_OBJECTS];
-static const wchar_t* directoryPath[MAXIMUM_WAIT_OBJECTS];
-static fileIndex_list dirToFilesMap[MAXIMUM_WAIT_OBJECTS];
-static HANDLE notifyHandle[MAXIMUM_WAIT_OBJECTS];
+static const wchar_t *fullPath[MAXIMUM_FILES];
+static const wchar_t* directoryPath[MAXIMUM_FILES];
+static fileIndex_list dirToFilesMap[MAXIMUM_FILES];
+static HANDLE notifyHandle[MAXIMUM_FILES];
 
 int wmain(int argc, wchar_t *argv[])
 {
@@ -376,7 +294,7 @@ int wmain(int argc, wchar_t *argv[])
 	}
 
 	//Parse command-line options
-	while ((argOffset < argc) && (!wcsncmp(argv[argOffset], L"--", 2)))
+	for (; (argOffset < argc) && (!wcsncmp(argv[argOffset], L"--", 2)); ++argOffset)
 	{
 		if(!argv[argOffset][2U])
 		{
@@ -396,22 +314,25 @@ int wmain(int argc, wchar_t *argv[])
 		fputws(L"Error: No file name(s) specified. Nothing to do!\n", stderr);
 		goto cleanup;
 	}
-	if ((argc - argOffset) > MAXIMUM_WAIT_OBJECTS)
+	if ((argc - argOffset) > MAXIMUM_FILES)
 	{
-		fwprintf(stderr, L"Error: Too many file name(s) specified! [limit: %d]\n", MAXIMUM_WAIT_OBJECTS);
+		fwprintf(stderr, L"Error: Too many file name(s) specified! [limit: %d]\n", MAXIMUM_FILES);
 		goto cleanup;
 	}
 
-	//Get normalized path(s) of input files
-	while (argOffset < argc)
+	//Convert all input file(s) to absoloute paths
+	for (; argOffset < argc; ++argOffset)
 	{
 		BOOL duplicate = FALSE;
-		DWORD error = 0L;
-		const wchar_t *const fullPathNext = getNormalizedPath(argv[argOffset++], &error);
+		const wchar_t *fullPathNext = getCanonicalPath(argv[argOffset]);
 		if (!fullPathNext)
 		{
-			printFilePathError(error, argv[argOffset-1]);
-			goto cleanup;
+			fullPathNext = _wfullpath(NULL, argv[argOffset], 0UL);
+			if (!fullPathNext)
+			{
+				fwprintf(stderr, L"Error: Path \"%s\" could not be resolved!\n", argv[argOffset]);
+				goto cleanup;
+			}
 		}
 		for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 		{
@@ -513,7 +434,7 @@ int wmain(int argc, wchar_t *argv[])
 	{
 		//Wait for next event
 		status = WaitForMultipleObjects(dirCount, notifyHandle, FALSE, 29989U);
-		if ((status >= WAIT_OBJECT_0) && (status < (WAIT_OBJECT_0 + MAXIMUM_WAIT_OBJECTS)))
+		if ((status >= WAIT_OBJECT_0) && (status < WAIT_OBJECT_0 + MAXIMUM_WAIT_OBJECTS))
 		{
 			//Has any file been modified?
 			const DWORD notifyIdx = status - WAIT_OBJECT_0;
