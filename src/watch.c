@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <io.h>
 #include <fcntl.h>
+#include <wchar.h>
 
 #define WIN32_LEAN_AND_MEAN 1
 #include <Windows.h>
@@ -94,6 +95,92 @@ static __inline BOOL resizeBuffer(wchar_t **const buffer, size_t *const size, co
 	return TRUE; /*success*/
 }
 
+static __inline const wchar_t* getFinalPath(const wchar_t *const fileName, DWORD *const error)
+{
+	typedef DWORD (__stdcall *PGETFINALPATHNAMEBYHANDLEW)(HANDLE hFile, LPWSTR lpszFilePath, DWORD cchFilePath, DWORD dwFlags);
+	static BOOL initialized = FALSE;
+	static PGETFINALPATHNAMEBYHANDLEW getFinalPathNameByHandleW = NULL;
+
+	int loop;
+	wchar_t *buffer = NULL;
+	size_t size = 0UL;
+	HANDLE h = INVALID_HANDLE_VALUE;
+	*error = (DWORD)(-1L);
+
+	//Initialize on first call
+	if(!initialized)
+	{
+		const HMODULE kernel32 = GetModuleHandleW(L"kernel32.dll");
+		if(kernel32)
+		{
+			getFinalPathNameByHandleW = (PGETFINALPATHNAMEBYHANDLEW) GetProcAddress(kernel32, "GetFinalPathNameByHandleW");
+		}
+		initialized = TRUE;
+	}
+
+	//Check availability
+	if(!getFinalPathNameByHandleW)
+	{
+		*error = ERROR_PROC_NOT_FOUND; /*unavailable!*/
+		goto failure;
+	}
+
+	//Try to open file
+	h = CreateFileW(fileName, FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+	if (h == INVALID_HANDLE_VALUE)
+	{
+		*error = GetLastError();
+		goto failure;
+	}
+
+	for(loop = 0; loop < 3; ++loop)
+	{
+		//Try to get full path name
+		const DWORD result = getFinalPathNameByHandleW(h, buffer, size, VOLUME_NAME_DOS);
+		if (result < 1U)
+		{
+			*error = GetLastError();
+			goto failure;
+		}
+
+		//Increase buffer size as needed
+		if (result > size)
+		{
+			if (!resizeBuffer(&buffer, &size, result))
+			{
+				*error = ERROR_OUTOFMEMORY;
+				goto failure;
+			}
+			continue;
+		}
+
+		//Close file handle
+		CloseHandle(h);
+
+		//Remove "//?/" prefix, iff safe
+		if ((result > 6U) && ((result - 4U) < MAX_PATH) && (!wcsncmp(buffer, L"\\\\?\\", 4U)) && iswalpha(buffer[4U]) && (!wcsncmp(buffer + 5U, L":\\", 2U)))
+		{
+			wmemmove(buffer, buffer + 4U, result - 3U); 
+		}
+
+		//Clean-up and return
+		*error = ERROR_SUCCESS;
+		return buffer;
+	}
+
+failure:
+	if (buffer)
+	{
+		free(buffer);
+	}
+	if (h != INVALID_HANDLE_VALUE)
+	{
+		CloseHandle(h);
+	}
+
+	return NULL; /*failure*/
+}
+
 static __inline const wchar_t* getFullPath(const wchar_t *const fileName, DWORD *const error)
 {
 	int loop;
@@ -101,10 +188,10 @@ static __inline const wchar_t* getFullPath(const wchar_t *const fileName, DWORD 
 	size_t size = 0UL;
 	*error = (DWORD)(-1L);
 
-	for(loop = 0; loop < 7; ++loop)
+	for(loop = 0; loop < 3; ++loop)
 	{
 		//Try to get full path name
-		const DWORD result = GetLongPathNameW(fileName, buffer, size);
+		const DWORD result = GetFullPathNameW(fileName, size, buffer, NULL);
 		if (result < 1U)
 		{
 			*error = GetLastError();
@@ -135,6 +222,16 @@ failure:
 	return NULL; /*failure*/
 }
 
+static __inline const wchar_t* getNormalizedPath(const wchar_t *const fileName, DWORD *const error)
+{
+	const wchar_t *normalizedPath = getFinalPath(fileName, error);
+	if((!normalizedPath) && (*error == ERROR_PROC_NOT_FOUND))
+	{
+		normalizedPath = getFullPath(fileName, error);
+	}
+	return normalizedPath;
+}
+
 static void printFilePathError(const DWORD error, const wchar_t *const fileName)
 {
 	switch(error)
@@ -150,8 +247,11 @@ static void printFilePathError(const DWORD error, const wchar_t *const fileName)
 	case ERROR_OUTOFMEMORY:
 		fputws(L"Error: Out of memory!\n", stderr);
 		break;
+	case ERROR_INVALID_NAME:
+		fwprintf(stderr, L"Error: File name \"%s\" is invalid!\n", fileName);
+		break;
 	default:
-		fwprintf(stderr, L"Error: Path \"%s\" could not be normalized!\n", fileName);
+		fwprintf(stderr, L"Error: Path \"%s\" could not be resolved!\n", fileName);
 	}
 }
 
@@ -187,7 +287,7 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 }
 
 /* ======================================================================= */
-/* MAIN                                                                    */
+/* HELPER MACROS AND TYPES                                                 */
 /* ======================================================================= */
 
 #define TRY_PARSE_OPTION(NAME) \
@@ -234,6 +334,11 @@ typedef struct
 }
 fileIndex_list;
 
+/* ======================================================================= */
+/* MAIN                                                                    */
+/* ======================================================================= */
+
+/*Globals*/
 static const wchar_t *fullPath[MAXIMUM_WAIT_OBJECTS];
 static const wchar_t* directoryPath[MAXIMUM_WAIT_OBJECTS];
 static fileIndex_list dirToFilesMap[MAXIMUM_WAIT_OBJECTS];
@@ -297,12 +402,12 @@ int wmain(int argc, wchar_t *argv[])
 		goto cleanup;
 	}
 
-	//Get the full path(s) of input files
+	//Get normalized path(s) of input files
 	while (argOffset < argc)
 	{
 		BOOL duplicate = FALSE;
 		DWORD error = 0L;
-		const wchar_t *const fullPathNext = getFullPath(argv[argOffset++], &error);
+		const wchar_t *const fullPathNext = getNormalizedPath(argv[argOffset++], &error);
 		if (!fullPathNext)
 		{
 			printFilePathError(error, argv[argOffset-1]);
