@@ -93,6 +93,9 @@ static __inline BOOL resizeBuffer(wchar_t **const buffer, size_t *const size, co
 	return TRUE; /*success*/
 }
 
+#define _SAFE_WITHOUT_PREFIX(OFF) \
+	((!wcschr(buffer + (OFF), L'/')) && (!wcsstr(buffer + (OFF), L".\\")) && (buffer[result - 1U] != L'.'))
+
 static __inline const wchar_t* getCanonicalPath(const wchar_t *const fileName)
 {
 	typedef DWORD (WINAPI *PGETFINALPATHNAMEBYHANDLEW)(HANDLE hFile, LPWSTR lpszFilePath, DWORD cchFilePath, DWORD dwFlags);
@@ -107,7 +110,7 @@ static __inline const wchar_t* getCanonicalPath(const wchar_t *const fileName)
 	//Initialize on first call
 	while((loop = InterlockedCompareExchange(&initialized, -1L, 0L)) != 1L)
 	{
-		if(!loop) /*first thread initialzes*/
+		if(!loop) /*first thread initializes*/
 		{
 			getFinalPathNameByHandleW = (PGETFINALPATHNAMEBYHANDLEW) GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetFinalPathNameByHandleW");
 			InterlockedExchange(&initialized, 1L);
@@ -121,7 +124,7 @@ static __inline const wchar_t* getCanonicalPath(const wchar_t *const fileName)
 	}
 
 	//Try to open file
-	handle = CreateFileW(fileName, FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+	handle = CreateFileW(fileName, 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 	if (handle == INVALID_HANDLE_VALUE)
 	{
 		goto failure;
@@ -149,12 +152,22 @@ static __inline const wchar_t* getCanonicalPath(const wchar_t *const fileName)
 		//Close file handle now!
 		CloseHandle(handle);
 
-		//Remove "//?/" prefix, iff safe
+		//Remove ‘\\?\’ or ‘\\?\UNC\’ prefix, iff it's safe
 		if ((result > 6U) && ((result - 4U) < MAX_PATH) && (!wcsncmp(buffer, L"\\\\?\\", 4U)) && iswalpha(buffer[4U]) && (!wcsncmp(buffer + 5U, L":\\", 2U)))
 		{
-			wmemmove(buffer, buffer + 4U, result - 3U); 
+			if (_SAFE_WITHOUT_PREFIX(6U))
+			{
+				wmemmove(buffer, buffer + 4U, result - 3U); 
+			}
 		}
-
+		else if ((result > 8U) && ((result - 6U) < MAX_PATH) && (!wcsncmp(buffer, L"\\\\?\\UNC\\", 8U)))
+		{
+			if (_SAFE_WITHOUT_PREFIX(8U))
+			{
+				wmemmove(buffer + 2U, buffer + 8U, result - 7U); 
+			}
+		}
+		
 		return buffer; /*success*/
 	}
 
@@ -176,8 +189,11 @@ static __inline const wchar_t* getDirectoryPart(const wchar_t *const fullPath)
 	wchar_t *const buffer = _wcsdup(fullPath);
 	if (buffer)
 	{
-		PathRemoveFileSpecW(buffer);
-		return buffer;
+		if(PathRemoveFileSpecW(buffer))
+		{
+			return buffer;
+		}
+		free((void*)buffer); /*clean-up*/
 	}
 
 	return NULL;
@@ -401,6 +417,7 @@ int wmain(int argc, wchar_t *argv[])
 		}
 	}
 
+	//Print directory to file map (DEBUG)
 #ifndef NDEBUG
 	for(dirIdx = 0; dirIdx < dirCount; ++dirIdx)
 	{
