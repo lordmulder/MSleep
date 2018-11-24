@@ -118,7 +118,7 @@ static volatile LONG getFinalPathNameInit = 0L;
 static PGETFINALPATHNAMEBYHANDLEW getFinalPathNamePtr = NULL;
 
 #define _SAFE_WITHOUT_PREFIX(OFF) \
-	((!wcspbrk(buffer + (OFF), L"<>:\"/|?*")) && (!wcsstr(buffer + (OFF), L".\\")) && (buffer[length - 1U] != L'.'))
+	((!wcspbrk(buffer + (OFF), L"<>\"/|?*")) && (!wcsstr(buffer + (OFF), L".\\")) && (!wcsstr(buffer + (OFF), L":\\")) && (buffer[length - 1U] != L'.') && (buffer[length - 1U] != L':'))
 
 static __inline void cleanFilePath(wchar_t *const buffer)
 {
