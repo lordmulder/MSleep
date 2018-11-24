@@ -11,12 +11,17 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\watch.c" />
+    <ClCompile Include="src\common.c" />
+    <ClCompile Include="src\notifywait.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\common.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{65DA2FD5-B9CF-4498-BA56-55166C0CA896}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>watch</RootNamespace>
+    <RootNamespace>notifywait</RootNamespace>
+    <ProjectName>notifywait</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "msleep", "msleep.vcxproj", "{1186ADFA-5C03-480C-AD71-45FCA49157AF}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "watch", "watch.vcxproj", "{65DA2FD5-B9CF-4498-BA56-55166C0CA896}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "notifywait", "notifywait.vcxproj", "{65DA2FD5-B9CF-4498-BA56-55166C0CA896}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

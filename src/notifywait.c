@@ -1,5 +1,5 @@
 /*
- * msleep for Win32
+ * notifywait for Win32
  * Created by LoRd_MuldeR <mulder2@gmx.de>.
  * 
  * This work is licensed under the CC0 1.0 Universal License.
@@ -7,17 +7,13 @@
  * https://creativecommons.org/publicdomain/zero/1.0/legalcode
  */
 
+#include "common.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <locale.h>
-#include <errno.h>
 #include <io.h>
 #include <fcntl.h>
-#include <wchar.h>
-
-#define WIN32_LEAN_AND_MEAN 1
-#include <Windows.h>
-#include <Shlwapi.h>
 
 //VC 6.0 workaround
 #ifdef ENABLE_VC6_WORKAROUNDS
@@ -32,182 +28,15 @@ _CRTIMP extern FILE _iob[];
 /* UTILITY FUNCTIONS                                                       */
 /* ======================================================================= */
 
-static __inline const DWORD getAttributes(const wchar_t *const filePath)
-{
-	DWORD loop, attribs;
-
-	for (loop = 0U; loop <= 13U; ++loop)
-	{
-		if (loop > 0U)
-		{
-			Sleep(loop);
-		}
-		if ((attribs = GetFileAttributesW(filePath)) != INVALID_FILE_ATTRIBUTES)
-		{
-			return attribs;
-		}
-	}
-
-	return INVALID_FILE_ATTRIBUTES;
-}
-
-static __inline const BOOL clearAttribute(const wchar_t *const filePath, const DWORD mask)
-{
-	DWORD loop, attribs;
-
-	for (loop = 0U; loop < 31U; ++loop)
-	{
-		if ((attribs = getAttributes(filePath)) == INVALID_FILE_ATTRIBUTES)
-		{
-			break;
-		}
-		if (!(attribs & mask))
-		{
-			return TRUE; /*attrib successfully cleared*/
-		}
-		else
-		{
-			SetFileAttributesW(filePath, attribs & (~mask));
-			Sleep(1); /*small delay!*/
-		}
-	}
-
-	return FALSE;
-}
-
-static __inline BOOL resizeBuffer(wchar_t **const buffer, size_t *const size, const size_t requiredSize)
-{
-	if((!(*buffer)) || (*size != requiredSize))
-	{
-		//Try to allocate new buffer
-		wchar_t *const bufferNext = (wchar_t*) realloc(*buffer, sizeof(wchar_t) * requiredSize);
-		if (!bufferNext)
-		{
-			return FALSE; /*allocation failed*/
-		}
-
-		*buffer = bufferNext;
-		*size = requiredSize;
-	}
-	
-	return TRUE; /*success*/
-}
-
-#define _SAFE_WITHOUT_PREFIX(OFF) \
-	((!wcschr(buffer + (OFF), L'/')) && (!wcsstr(buffer + (OFF), L".\\")) && (buffer[result - 1U] != L'.'))
-
-static __inline const wchar_t* getCanonicalPath(const wchar_t *const fileName)
-{
-	typedef DWORD (WINAPI *PGETFINALPATHNAMEBYHANDLEW)(HANDLE hFile, LPWSTR lpszFilePath, DWORD cchFilePath, DWORD dwFlags);
-	static volatile LONG initialized = 0L;
-	static PGETFINALPATHNAMEBYHANDLEW getFinalPathNameByHandleW = NULL;
-
-	LONG loop = 0L;
-	wchar_t *buffer = NULL;
-	size_t size = 0UL;
-	HANDLE handle = NULL;
-
-	//Initialize on first call
-	while((loop = InterlockedCompareExchange(&initialized, -1L, 0L)) != 1L)
-	{
-		if(!loop) /*first thread initializes*/
-		{
-			getFinalPathNameByHandleW = (PGETFINALPATHNAMEBYHANDLEW) GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetFinalPathNameByHandleW");
-			InterlockedExchange(&initialized, 1L);
-		}
-	}
-
-	//Check availability
-	if(!getFinalPathNameByHandleW)
-	{
-		goto failure; /*GetFinalPathNameByHandleW unavailable!*/
-	}
-
-	//Try to open file
-	handle = CreateFileW(fileName, 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
-	if (handle == INVALID_HANDLE_VALUE)
-	{
-		goto failure;
-	}
-
-	for(loop = 0L; loop < 3L; ++loop)
-	{
-		//Try to get full path name
-		const DWORD result = getFinalPathNameByHandleW(handle, buffer, size, VOLUME_NAME_DOS);
-		if (result < 1U)
-		{
-			goto failure;
-		}
-
-		//Increase buffer size as needed
-		if (result > size)
-		{
-			if (!resizeBuffer(&buffer, &size, result))
-			{
-				goto failure;
-			}
-			continue;
-		}
-
-		//Close file handle now!
-		CloseHandle(handle);
-
-		//Remove ‘\\?\’ or ‘\\?\UNC\’ prefix, iff it's safe
-		if ((result > 6U) && ((result - 4U) < MAX_PATH) && (!wcsncmp(buffer, L"\\\\?\\", 4U)) && iswalpha(buffer[4U]) && (!wcsncmp(buffer + 5U, L":\\", 2U)))
-		{
-			if (_SAFE_WITHOUT_PREFIX(6U))
-			{
-				wmemmove(buffer, buffer + 4U, result - 3U); 
-			}
-		}
-		else if ((result > 8U) && ((result - 6U) < MAX_PATH) && (!wcsncmp(buffer, L"\\\\?\\UNC\\", 8U)))
-		{
-			if (_SAFE_WITHOUT_PREFIX(8U))
-			{
-				wmemmove(buffer + 2U, buffer + 8U, result - 7U); 
-			}
-		}
-		
-		return buffer; /*success*/
-	}
-
-failure:
-	if (buffer)
-	{
-		free(buffer);
-	}
-	if (handle && (handle != INVALID_HANDLE_VALUE))
-	{
-		CloseHandle(handle);
-	}
-
-	return NULL; /*failure*/
-}
-
-static __inline const wchar_t* getDirectoryPart(const wchar_t *const fullPath)
-{
-	wchar_t *const buffer = _wcsdup(fullPath);
-	if (buffer)
-	{
-		if(PathRemoveFileSpecW(buffer))
-		{
-			return buffer;
-		}
-		free((void*)buffer); /*clean-up*/
-	}
-
-	return NULL;
-}
-
 static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 {
 	switch (dwCtrlTyp)
 	{
 	case CTRL_C_EVENT:
-		fputws(L"Ctrl+C: Watcher has been interrupted !!!\n", stderr);
+		fputws(L"Ctrl+C: Notifywait has been interrupted !!!\n", stderr);
 		break;
 	case CTRL_BREAK_EVENT:
-		fputws(L"Break: Watcher has been interrupted !!!\n", stderr);
+		fputws(L"Break: Notifywait has been interrupted !!!\n", stderr);
 		break;
 	default:
 		return FALSE;
@@ -294,10 +123,10 @@ int wmain(int argc, wchar_t *argv[])
 	//Check command-line arguments
 	if (argc < 2)
 	{
-		fputws(L"file change watcher [" TEXT(__DATE__) L"]\n", stderr);
+		fputws(L"notifywait [" TEXT(__DATE__) L"]\n", stderr);
 		fputws(L"Wait until a file is changed. File changes are detected via \"archive\" bit.\n\n", stderr);
 		fputws(L"Usage:\n", stderr);
-		fputws(L"   watch.exe [options] <filename_1> [<filename_2> ... <filename_N>]\n\n", stderr);
+		fputws(L"   notifywait.exe [options] <filename_1> [<filename_2> ... <filename_N>]\n\n", stderr);
 		fputws(L"Options:\n", stderr);
 		fputws(L"   --clear  unset the \"archive\" bit *before* monitoring for file changes\n", stderr);
 		fputws(L"   --reset  unset the \"archive\" bit *after* a file change was detected\n", stderr);
@@ -343,12 +172,8 @@ int wmain(int argc, wchar_t *argv[])
 		const wchar_t *fullPathNext = getCanonicalPath(argv[argOffset]);
 		if (!fullPathNext)
 		{
-			fullPathNext = _wfullpath(NULL, argv[argOffset], 0UL);
-			if (!fullPathNext)
-			{
-				fwprintf(stderr, L"Error: Path \"%s\" could not be resolved!\n", argv[argOffset]);
-				goto cleanup;
-			}
+			fwprintf(stderr, L"Error: Path \"%s\" could not be resolved!\n", argv[argOffset]);
+			goto cleanup;
 		}
 		for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 		{
@@ -418,7 +243,7 @@ int wmain(int argc, wchar_t *argv[])
 	}
 
 	//Print directory to file map (DEBUG)
-#ifndef NDEBUG
+#ifndef NNDEBUG
 	for(dirIdx = 0; dirIdx < dirCount; ++dirIdx)
 	{
 		fwprintf(stderr, L"%d: %s\n", dirIdx, directoryPath[dirIdx]);
