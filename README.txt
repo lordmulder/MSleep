@@ -17,11 +17,11 @@ Note: Process creation overhead will be measured and compensated.
 
 -----------------------------------------------------------------------------
 
-file change watcher
+notifywait
 Wait until a file is changed. File changes are detected via "archive" bit.
 
 Usage:
-   watch.exe [options] <filename_1> [<filename_2> ... <filename_N>]
+   notifywait.exe [options] <filename_1> [<filename_2> ... <filename_N>]
 
 Options:
    --clear  unset the "archive" bit *before* monitoring for file changes
@@ -32,3 +32,16 @@ Remarks:
    The operating system sets the "archive" bit whenever a file is changed.
    If, initially, the "archive" bit is set, program terminates right away.
    If *multiple* files are given, program terminates on *any* file change.
+
+-----------------------------------------------------------------------------
+
+realpath
+Convert file name or relative path into fully qualified "canonical" path.
+
+Usage:
+   realpath.exe [options] <filename>
+
+Options:
+   --exists     check whether the target file system object exists
+   --file       check whether the path points to a file
+   --directory  check whether the path points to a directory

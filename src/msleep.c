@@ -99,6 +99,13 @@ int wmain(int argc, wchar_t *argv[])
 		return EXIT_FAILURE;
 	}
 
+	//Check argument count
+	if (argc > 2)
+	{
+		fputws(L"Error: Found excess command-line argument!\n", stderr);
+		return EXIT_FAILURE;
+	}
+
 	//Parse timeout
 	switch (parseULong(argv[1], &timeout))
 	{

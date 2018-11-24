@@ -18,3 +18,23 @@ BOOL clearAttribute(const wchar_t *const filePath, const DWORD mask);
 
 const wchar_t* getCanonicalPath(const wchar_t *const fileName);
 const wchar_t* getDirectoryPart(const wchar_t *const fullPath);
+
+/* free buffer, if not NULL */
+#define FREE(PTR) do \
+{ \
+	if ((PTR)) \
+	{ \
+		free((void*)(PTR)); \
+	} \
+} \
+while(0);
+
+/* close system handle, if valid */
+#define CLOSE_HANDLE(H) do \
+{ \
+	if ((H) && ((H) != INVALID_HANDLE_VALUE)) \
+	{ \
+		CloseHandle((H)); \
+	} \
+} \
+while(0)

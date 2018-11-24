@@ -5,6 +5,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "msleep", "msleep.vcxproj", 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "notifywait", "notifywait.vcxproj", "{65DA2FD5-B9CF-4498-BA56-55166C0CA896}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "realpath", "realpath.vcxproj", "{384185CB-3307-4854-AC5C-093FF00EC084}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -19,6 +21,10 @@ Global
 		{65DA2FD5-B9CF-4498-BA56-55166C0CA896}.Debug|Win32.Build.0 = Debug|Win32
 		{65DA2FD5-B9CF-4498-BA56-55166C0CA896}.Release|Win32.ActiveCfg = Release|Win32
 		{65DA2FD5-B9CF-4498-BA56-55166C0CA896}.Release|Win32.Build.0 = Release|Win32
+		{384185CB-3307-4854-AC5C-093FF00EC084}.Debug|Win32.ActiveCfg = Debug|Win32
+		{384185CB-3307-4854-AC5C-093FF00EC084}.Debug|Win32.Build.0 = Debug|Win32
+		{384185CB-3307-4854-AC5C-093FF00EC084}.Release|Win32.ActiveCfg = Release|Win32
+		{384185CB-3307-4854-AC5C-093FF00EC084}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

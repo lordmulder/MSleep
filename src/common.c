@@ -7,11 +7,10 @@
  * https://creativecommons.org/publicdomain/zero/1.0/legalcode
  */
 
+#include "common.h"
+
 #include <stdlib.h>
 #include <wchar.h>
-
-#define WIN32_LEAN_AND_MEAN 1
-#include <Windows.h>
 #include <Shlwapi.h>
 
 /* ======================================================================= */
@@ -113,14 +112,59 @@ BOOL clearAttribute(const wchar_t *const filePath, const DWORD mask)
 /* CANONICAL FILE NAME                                                     */
 /* ======================================================================= */
 
+//GetFinalPathNameByHandleW support
 typedef DWORD (WINAPI *PGETFINALPATHNAMEBYHANDLEW)(HANDLE hFile, LPWSTR lpszFilePath, DWORD cchFilePath, DWORD dwFlags);
 static volatile LONG getFinalPathNameInit = 0L;
 static PGETFINALPATHNAMEBYHANDLEW getFinalPathNamePtr = NULL;
 
 #define _SAFE_WITHOUT_PREFIX(OFF) \
-	((!wcschr(buffer + (OFF), L'/')) && (!wcsstr(buffer + (OFF), L".\\")) && (buffer[result - 1U] != L'.'))
+	((!wcspbrk(buffer + (OFF), L"<>:\"/|?*")) && (!wcsstr(buffer + (OFF), L".\\")) && (buffer[length - 1U] != L'.'))
 
-static __inline const wchar_t* getFinalPathName(const wchar_t *const fileName)
+static __inline void cleanFilePath(wchar_t *const buffer)
+{
+	//Determine length
+	size_t length = wcslen(buffer);
+	if(!length)
+	{
+		return; /*empty string*/
+	}
+
+	//Remove ‘\\?\’, ‘\\.\’ or ‘\\?\UNC\’ prefix, iff it's safe
+	if ((length > 6U) && ((length - 4U) < MAX_PATH) && ((!wcsncmp(buffer, L"\\\\?\\", 4U)) || (!wcsncmp(buffer, L"\\\\.\\", 4U))) && iswalpha(buffer[4U]) && (!wcsncmp(buffer + 5U, L":\\", 2U)))
+	{
+		if (_SAFE_WITHOUT_PREFIX(6U))
+		{
+			wmemmove(buffer, buffer + 4U, length - 3U);
+			length -= 4U;
+		}
+	}
+	else if ((length > 8U) && ((length - 6U) < MAX_PATH) && ((!wcsncmp(buffer, L"\\\\?\\UNC\\", 8U)) || (!wcsncmp(buffer, L"\\\\.\\UNC\\", 8U))))
+	{
+		if (_SAFE_WITHOUT_PREFIX(8U))
+		{
+			wmemmove(buffer + 2U, buffer + 8U, length - 7U); 
+			length -= 6U;
+		}
+	}
+
+	//Normalize drive letter casing
+	if((length >= 3U) && iswalpha(buffer[0]) && (!wcsncmp(buffer + 1U, L":\\", 2U)))
+	{
+		buffer[0U] = towupper(buffer[0U]);
+	}
+	else if ((length > 6U) && ((!wcsncmp(buffer, L"\\\\?\\", 4U)) || (!wcsncmp(buffer, L"\\\\.\\", 4U))) && iswalpha(buffer[4U]) && (!wcsncmp(buffer + 5U, L":\\", 2U)))
+	{
+		buffer[4U] = towupper(buffer[4U]);
+	}
+
+	//Remove trailing backslash characters
+	while((length > 1) && (buffer[length - 1U] == L'\\') && (buffer[length - 2U] != L':'))
+	{
+		buffer[--length] = L'\0';
+	}
+}
+
+static const wchar_t* getFinalPathName(const wchar_t *const fileName)
 {
 	LONG loop = 0L;
 	wchar_t *buffer = NULL;
@@ -143,8 +187,8 @@ static __inline const wchar_t* getFinalPathName(const wchar_t *const fileName)
 		goto failure; /*GetFinalPathNameByHandleW unavailable!*/
 	}
 
-	//Try to open file
-	handle = CreateFileW(fileName, 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+	//Try to open file (or directory)
+	handle = CreateFileW(fileName, 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 	if (handle == INVALID_HANDLE_VALUE)
 	{
 		goto failure;
@@ -169,47 +213,108 @@ static __inline const wchar_t* getFinalPathName(const wchar_t *const fileName)
 			continue;
 		}
 
-		//Close file handle now!
-		CloseHandle(handle);
+		//Clean up
+		CLOSE_HANDLE(handle);
 
-		//Remove ‘\\?\’ or ‘\\?\UNC\’ prefix, iff it's safe
-		if ((result > 6U) && ((result - 4U) < MAX_PATH) && (!wcsncmp(buffer, L"\\\\?\\", 4U)) && iswalpha(buffer[4U]) && (!wcsncmp(buffer + 5U, L":\\", 2U)))
-		{
-			if (_SAFE_WITHOUT_PREFIX(6U))
-			{
-				wmemmove(buffer, buffer + 4U, result - 3U); 
-			}
-		}
-		else if ((result > 8U) && ((result - 6U) < MAX_PATH) && (!wcsncmp(buffer, L"\\\\?\\UNC\\", 8U)))
-		{
-			if (_SAFE_WITHOUT_PREFIX(8U))
-			{
-				wmemmove(buffer + 2U, buffer + 8U, result - 7U); 
-			}
-		}
-		
+		//Clean the path string
+		cleanFilePath(buffer);
 		return buffer; /*success*/
 	}
 
 failure:
-	if (buffer)
+	FREE(buffer);
+	CLOSE_HANDLE(handle);
+	return NULL;
+}
+
+static const wchar_t* getFullPathName(const wchar_t *const fileName)
+{
+	LONG loop = 0L;
+	wchar_t *buffer = NULL;
+	size_t size = 0UL;
+
+	for(loop = 0L; loop < 3L; ++loop)
 	{
-		free(buffer);
-	}
-	if (handle && (handle != INVALID_HANDLE_VALUE))
-	{
-		CloseHandle(handle);
+		//Try to get full path name
+		const DWORD result = GetFullPathNameW(fileName, size, buffer, NULL);
+		if (result < 1U)
+		{
+			goto failure;
+		}
+
+		//Increase buffer size as needed
+		if (result > size)
+		{
+			if (!resizeBuffer(&buffer, &size, result))
+			{
+				goto failure;
+			}
+			continue;
+		}
+
+		//Clean the path string
+		cleanFilePath(buffer);
+		return buffer; /*success*/
 	}
 
-	return NULL; /*failure*/
+failure:
+	FREE(buffer);
+	return NULL;
+}
+
+static const wchar_t* getLongPathName(const wchar_t *const fileName)
+{
+	LONG loop = 0L;
+	wchar_t *buffer = NULL;
+	size_t size = 0UL;
+
+	for(loop = 0L; loop < 3L; ++loop)
+	{
+		//Try to get full path name
+		const DWORD result = GetLongPathNameW(fileName, buffer, size);
+		if (result < 1U)
+		{
+			goto failure;
+		}
+
+		//Increase buffer size as needed
+		if (result > size)
+		{
+			if (!resizeBuffer(&buffer, &size, result))
+			{
+				goto failure;
+			}
+			continue;
+		}
+
+		//Clean the path string
+		cleanFilePath(buffer);
+		return buffer; /*success*/
+	}
+
+failure:
+	FREE(buffer);
+	return NULL;
 }
 
 const wchar_t* getCanonicalPath(const wchar_t *const fileName)
 {
+	//Try the "modern" way first
 	const wchar_t* canonicalPath = getFinalPathName(fileName);
-	if(!canonicalPath)
+	if(canonicalPath)
 	{
-		canonicalPath = _wfullpath(NULL, fileName, 0UL);
+		return canonicalPath;
+	}
+
+	//Fallback method for "legacy" OS
+	if(canonicalPath = getFullPathName(fileName))
+	{
+		const wchar_t* longFullPath = getLongPathName(canonicalPath);
+		if(longFullPath)
+		{
+			free((void*)canonicalPath);
+			canonicalPath = longFullPath;
+		}
 	}
 
 	return canonicalPath;

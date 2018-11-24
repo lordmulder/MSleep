@@ -70,7 +70,7 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 	} \
 	if (attribs & FILE_ATTRIBUTE_DIRECTORY) \
 	{ \
-		fwprintf(stderr, L"Error: Path \"%s\" is a directory!\n", fullPath[(IDX)]); \
+		fwprintf(stderr, L"Error: Path \"%s\" points to a directory!\n", fullPath[(IDX)]); \
 		goto cleanup; \
 	} \
 	if (attribs & FILE_ATTRIBUTE_ARCHIVE) \
@@ -87,6 +87,15 @@ while(0)
 #define APPEND_TO_MAP(IDX,VALUE) do \
 { \
 	dirToFilesMap[(IDX)].files[dirToFilesMap[(IDX)].count++] = (VALUE); \
+} \
+while(0)
+
+#define CLOSE_NOTIFY_HANDLE(H) do \
+{ \
+	if ((H) && ((H) != INVALID_HANDLE_VALUE)) \
+	{ \
+		FindCloseChangeNotification((H)); \
+	} \
 } \
 while(0)
 
@@ -189,7 +198,7 @@ int wmain(int argc, wchar_t *argv[])
 		}
 		else
 		{
-			free((void*)fullPathNext); /*skip duplicate file*/
+			FREE(fullPathNext); /*skip duplicate file*/
 		}
 	}
 
@@ -326,22 +335,12 @@ success:
 cleanup:
 	for(dirIdx = 0; dirIdx < dirCount; ++dirIdx)
 	{
-		if (notifyHandle[dirIdx] && (notifyHandle[dirIdx] != INVALID_HANDLE_VALUE))
-		{
-			FindCloseChangeNotification(notifyHandle[dirIdx]);
-		}
-		if(directoryPath[dirIdx])
-		{
-			free((void*)directoryPath[dirIdx]);
-		}
+		FREE(directoryPath[dirIdx]);
+		CLOSE_NOTIFY_HANDLE(notifyHandle[dirIdx]);
 	}
 	for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 	{
-		if (fullPath[fileIdx])
-		{
-			free((void*)fullPath[fileIdx]);
-		}
-
+		FREE(fullPath[fileIdx]);
 	}
 
 	return result; /*exit*/

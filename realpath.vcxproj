@@ -12,16 +12,16 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\common.c" />
-    <ClCompile Include="src\notifywait.c" />
+    <ClCompile Include="src\realpath.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\common.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{65DA2FD5-B9CF-4498-BA56-55166C0CA896}</ProjectGuid>
+    <ProjectGuid>{384185CB-3307-4854-AC5C-093FF00EC084}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>notifywait</RootNamespace>
-    <ProjectName>notifywait</ProjectName>
+    <RootNamespace>realpath</RootNamespace>
+    <ProjectName>realpath</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
