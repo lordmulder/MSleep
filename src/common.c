@@ -37,6 +37,32 @@ static __inline BOOL resizeBuffer(wchar_t **const buffer, size_t *const size, co
 }
 
 /* ======================================================================= */
+/* TIME FUNCTIONS                                                          */
+/* ======================================================================= */
+
+static __inline unsigned long long fileTimeToMSec(const FILETIME *const fileTime)
+{
+	ULARGE_INTEGER tmp;
+	tmp.HighPart = fileTime->dwHighDateTime;
+	tmp.LowPart = fileTime->dwLowDateTime;
+	return tmp.QuadPart;
+}
+
+unsigned long long getCurrentTime(void)
+{
+	FILETIME now;
+	GetSystemTimeAsFileTime(&now);
+	return fileTimeToMSec(&now);
+}
+
+unsigned long long getStartupTime(void)
+{
+	FILETIME timeCreation, timeExit, timeKernel, timeUser;
+	GetProcessTimes(GetCurrentProcess(), &timeCreation, &timeExit, &timeKernel, &timeUser);
+	return fileTimeToMSec(&timeCreation);
+}
+
+/* ======================================================================= */
 /* FILE ATTRIBUTES                                                         */
 /* ======================================================================= */
 
@@ -84,7 +110,7 @@ BOOL clearAttribute(const wchar_t *const filePath, const DWORD mask)
 }
 
 /* ======================================================================= */
-/* CANONICAL FILE NAME*/
+/* CANONICAL FILE NAME                                                     */
 /* ======================================================================= */
 
 typedef DWORD (WINAPI *PGETFINALPATHNAMEBYHANDLEW)(HANDLE hFile, LPWSTR lpszFilePath, DWORD cchFilePath, DWORD dwFlags);

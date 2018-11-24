@@ -10,6 +10,9 @@
 #define WIN32_LEAN_AND_MEAN 1
 #include <Windows.h>
 
+unsigned long long getCurrentTime(void);
+unsigned long long getStartupTime(void);
+
 DWORD getAttributes(const wchar_t *const filePath);
 BOOL clearAttribute(const wchar_t *const filePath, const DWORD mask);
 

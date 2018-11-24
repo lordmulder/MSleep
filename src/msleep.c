@@ -7,13 +7,12 @@
  * https://creativecommons.org/publicdomain/zero/1.0/legalcode
  */
 
+#include "common.h"
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <locale.h>
 #include <errno.h>
-
-#define WIN32_LEAN_AND_MEAN 1
-#include <Windows.h>
+#include <locale.h>
 
 //VC 6.0 workaround
 #ifdef ENABLE_VC6_WORKAROUNDS
@@ -48,21 +47,6 @@ static __inline unsigned long parseULong(const wchar_t *str, unsigned long *cons
 	return 0;;
 }
 
-static __inline unsigned long long fileTimeToMSec(const FILETIME *const fileTime)
-{
-	ULARGE_INTEGER tmp;
-	tmp.HighPart = fileTime->dwHighDateTime;
-	tmp.LowPart = fileTime->dwLowDateTime;
-	return tmp.QuadPart;
-}
-
-static __inline unsigned long long getStartupTime(void)
-{
-	FILETIME timeCreation, timeExit, timeKernel, timeUser;
-	GetProcessTimes(GetCurrentProcess(), &timeCreation, &timeExit, &timeKernel, &timeUser);
-	return fileTimeToMSec(&timeCreation);
-}
-
 static __inline unsigned long computeDelta(const unsigned long long begin, const unsigned long long end)
 {
 	if(end > begin)
@@ -71,13 +55,6 @@ static __inline unsigned long computeDelta(const unsigned long long begin, const
 		return (delta < ULONG_MAX) ? ((unsigned long)delta) : ULONG_MAX;
 	}
 	return 0UL;
-}
-
-static __inline unsigned long long getCurrentTime(void)
-{
-	FILETIME now;
-	GetSystemTimeAsFileTime(&now);
-	return fileTimeToMSec(&now);
 }
 
 static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
