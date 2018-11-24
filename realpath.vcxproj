@@ -16,6 +16,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\common.h" />
+    <ClInclude Include="src\version.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="realpath.rc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{384185CB-3307-4854-AC5C-093FF00EC084}</ProjectGuid>

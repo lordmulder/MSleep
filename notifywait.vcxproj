@@ -16,6 +16,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\common.h" />
+    <ClInclude Include="src\version.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="notifywait.rc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{65DA2FD5-B9CF-4498-BA56-55166C0CA896}</ProjectGuid>

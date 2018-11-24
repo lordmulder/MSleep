@@ -1,0 +1,54 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "src/version.h"
+#include "WinResrc.h" //"afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+// Neutral resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_NEU)
+#ifdef _WIN32
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+#pragma code_page(1252)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+// Version
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION    VER_MSLEEP_MAJOR,VER_MSLEEP_MINOR_HI,VER_MSLEEP_MINOR_LO,VER_MSLEEP_PATCH
+ PRODUCTVERSION VER_MSLEEP_MAJOR,VER_MSLEEP_MINOR_HI,VER_MSLEEP_MINOR_LO,VER_MSLEEP_PATCH
+ FILEFLAGSMASK 0x17L
+#ifdef _DEBUG
+ FILEFLAGS 0x3L
+#else
+ FILEFLAGS 0x2L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "000004b0"
+        BEGIN
+            VALUE "Comments", "This work is licensed under the CC0 1.0 Universal License."
+            VALUE "CompanyName", "Muldersoft <mulder2@gmx.de>"
+            VALUE "FileDescription", "realpath"
+            VALUE "FileVersion", VER_MSLEEP_STR
+            VALUE "InternalName", "realpath"
+            VALUE "LegalCopyright", "Created by LoRd_MuldeR <mulder2@gmx.de>"
+            VALUE "LegalTrademarks", "This work is licensed under the CC0 1.0 Universal License."
+            VALUE "OriginalFilename", "realpath.exe"
+            VALUE "ProductName", "realpath"
+            VALUE "ProductVersion", VER_MSLEEP_STR
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0, 1200
+    END
+END
+
+#endif    // Neutral resources
+/////////////////////////////////////////////////////////////////////////////

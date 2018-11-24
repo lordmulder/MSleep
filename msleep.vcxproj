@@ -16,6 +16,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\common.h" />
+    <ClInclude Include="src\version.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="msleep.rc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{1186ADFA-5C03-480C-AD71-45FCA49157AF}</ProjectGuid>
