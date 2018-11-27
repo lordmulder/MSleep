@@ -65,9 +65,10 @@ unsigned long long getStartupTime(void)
 /* FILE ATTRIBUTES                                                         */
 /* ======================================================================= */
 
-DWORD getAttributes(const wchar_t *const filePath)
+DWORD getAttributes(const wchar_t *const filePath, unsigned long long *const timeStamp)
 {
-	DWORD loop, attribs;
+	DWORD loop;
+	WIN32_FILE_ATTRIBUTE_DATA attribs;
 
 	for (loop = 0U; loop <= 13U; ++loop)
 	{
@@ -75,10 +76,19 @@ DWORD getAttributes(const wchar_t *const filePath)
 		{
 			Sleep(loop);
 		}
-		if ((attribs = GetFileAttributesW(filePath)) != INVALID_FILE_ATTRIBUTES)
+		if (GetFileAttributesExW(filePath, GetFileExInfoStandard, &attribs))
 		{
-			return attribs;
+			if(timeStamp)
+			{
+				*timeStamp = fileTimeToMSec(&attribs.ftLastWriteTime);
+			}
+			return attribs.dwFileAttributes;
 		}
+	}
+
+	if(timeStamp)
+	{
+		*timeStamp = 0ULL;
 	}
 
 	return INVALID_FILE_ATTRIBUTES;
@@ -90,7 +100,7 @@ BOOL clearAttribute(const wchar_t *const filePath, const DWORD mask)
 
 	for (loop = 0U; loop < 31U; ++loop)
 	{
-		if ((attribs = getAttributes(filePath)) == INVALID_FILE_ATTRIBUTES)
+		if ((attribs = getAttributes(filePath, NULL)) == INVALID_FILE_ATTRIBUTES)
 		{
 			break;
 		}
@@ -124,7 +134,7 @@ static __inline void cleanFilePath(wchar_t *const buffer)
 {
 	//Determine length
 	size_t length = wcslen(buffer);
-	if(!length)
+	if (!length)
 	{
 		return; /*empty string*/
 	}
@@ -148,7 +158,7 @@ static __inline void cleanFilePath(wchar_t *const buffer)
 	}
 
 	//Normalize drive letter casing
-	if((length >= 3U) && iswalpha(buffer[0]) && (!wcsncmp(buffer + 1U, L":\\", 2U)))
+	if ((length >= 3U) && iswalpha(buffer[0]) && (!wcsncmp(buffer + 1U, L":\\", 2U)))
 	{
 		buffer[0U] = towupper(buffer[0U]);
 	}
@@ -158,7 +168,7 @@ static __inline void cleanFilePath(wchar_t *const buffer)
 	}
 
 	//Remove trailing backslash characters
-	while((length > 1) && (buffer[length - 1U] == L'\\') && (buffer[length - 2U] != L':'))
+	while ((length > 1) && (buffer[length - 1U] == L'\\') && (buffer[length - 2U] != L':'))
 	{
 		buffer[--length] = L'\0';
 	}
@@ -172,7 +182,7 @@ static const wchar_t* getFinalPathName(const wchar_t *const fileName)
 	HANDLE handle = NULL;
 
 	//Initialize on first call
-	while((loop = InterlockedCompareExchange(&getFinalPathNameInit, -1L, 0L)) != 1L)
+	while ((loop = InterlockedCompareExchange(&getFinalPathNameInit, -1L, 0L)) != 1L)
 	{
 		if(!loop) /*first thread initializes*/
 		{
@@ -182,7 +192,7 @@ static const wchar_t* getFinalPathName(const wchar_t *const fileName)
 	}
 
 	//Is available?
-	if(!getFinalPathNamePtr)
+	if (!getFinalPathNamePtr)
 	{
 		goto failure; /*GetFinalPathNameByHandleW unavailable!*/
 	}
@@ -194,7 +204,7 @@ static const wchar_t* getFinalPathName(const wchar_t *const fileName)
 		goto failure;
 	}
 
-	for(loop = 0L; loop < 3L; ++loop)
+	for (loop = 0L; loop < 3L; ++loop)
 	{
 		//Try to get full path name
 		const DWORD result = getFinalPathNamePtr(handle, buffer, size, VOLUME_NAME_DOS);
@@ -233,7 +243,7 @@ static const wchar_t* getFullPathName(const wchar_t *const fileName)
 	wchar_t *buffer = NULL;
 	size_t size = 0UL;
 
-	for(loop = 0L; loop < 3L; ++loop)
+	for (loop = 0L; loop < 3L; ++loop)
 	{
 		//Try to get full path name
 		const DWORD result = GetFullPathNameW(fileName, size, buffer, NULL);
@@ -268,7 +278,7 @@ static const wchar_t* getLongPathName(const wchar_t *const fileName)
 	wchar_t *buffer = NULL;
 	size_t size = 0UL;
 
-	for(loop = 0L; loop < 3L; ++loop)
+	for (loop = 0L; loop < 3L; ++loop)
 	{
 		//Try to get full path name
 		const DWORD result = GetLongPathNameW(fileName, buffer, size);
@@ -301,16 +311,16 @@ const wchar_t* getCanonicalPath(const wchar_t *const fileName)
 {
 	//Try the "modern" way first
 	const wchar_t* canonicalPath = getFinalPathName(fileName);
-	if(canonicalPath)
+	if (canonicalPath)
 	{
 		return canonicalPath;
 	}
 
 	//Fallback method for "legacy" OS
-	if(canonicalPath = getFullPathName(fileName))
+	if (canonicalPath = getFullPathName(fileName))
 	{
 		const wchar_t* longFullPath = getLongPathName(canonicalPath);
-		if(longFullPath)
+		if (longFullPath)
 		{
 			free((void*)canonicalPath);
 			canonicalPath = longFullPath;
@@ -329,7 +339,7 @@ const wchar_t* getDirectoryPart(const wchar_t *const fullPath)
 	wchar_t *const buffer = _wcsdup(fullPath);
 	if (buffer)
 	{
-		if(PathRemoveFileSpecW(buffer))
+		if (PathRemoveFileSpecW(buffer))
 		{
 			return buffer;
 		}

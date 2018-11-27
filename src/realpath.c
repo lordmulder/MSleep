@@ -132,7 +132,7 @@ int wmain(int argc, wchar_t *argv[])
 	//Check if file exists
 	if(check_mode) 
 	{
-		if ((attribs = getAttributes(fullPath)) == INVALID_FILE_ATTRIBUTES) \
+		if ((attribs = getAttributes(fullPath, NULL)) == INVALID_FILE_ATTRIBUTES) \
 		{ 
 			fwprintf(stderr, L"Error: File \"%s\" not found or access denied!\n", fullPath);
 			goto cleanup;

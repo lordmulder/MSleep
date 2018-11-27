@@ -63,9 +63,10 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 
 #define CHECK_IF_MODFIED(IDX) do \
 { \
-	if ((attribs = getAttributes(fullPath[(IDX)])) == INVALID_FILE_ATTRIBUTES) \
+	attribs = getAttributes(fullPath[(IDX)], &timeStamp); \
+	if (attribs == INVALID_FILE_ATTRIBUTES) \
 	{ \
-		fwprintf(stderr, L"Error: File \"%s\" not found or access denied!\n", fullPath[(IDX)]); \
+		fwprintf(stderr, L"Error: File \"%s\" does not exist anymore!\n", fullPath[(IDX)]); \
 		goto cleanup; \
 	} \
 	if (attribs & FILE_ATTRIBUTE_DIRECTORY) \
@@ -73,7 +74,7 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 		fwprintf(stderr, L"Error: Path \"%s\" points to a directory!\n", fullPath[(IDX)]); \
 		goto cleanup; \
 	} \
-	if (attribs & FILE_ATTRIBUTE_ARCHIVE) \
+	if ((attribs & FILE_ATTRIBUTE_ARCHIVE) || (timeStamp != lastModTs[(IDX)])) \
 	{ \
 		if(!quiet) \
 		{ \
@@ -113,6 +114,7 @@ fileIndex_list;
 /*Globals*/
 static const wchar_t *fullPath[MAXIMUM_FILES];
 static const wchar_t* directoryPath[MAXIMUM_FILES];
+static unsigned long long lastModTs[MAXIMUM_FILES];
 static fileIndex_list dirToFilesMap[MAXIMUM_FILES];
 static HANDLE notifyHandle[MAXIMUM_FILES];
 
@@ -120,7 +122,8 @@ int wmain(int argc, wchar_t *argv[])
 {
 	DWORD attribs = 0UL, status = 0UL;
 	int result = EXIT_FAILURE, argOffset = 1, fileCount = 0, fileIdx = 0, dirCount = 0, dirIdx = 0;
-	BOOL clear = FALSE, reset = FALSE, quiet = FALSE;
+	unsigned long long timeStamp = 0ULL;
+	BOOL clear = FALSE, reset = FALSE, quiet = FALSE, debug = FALSE;
 
 	//Initialize
 	SetErrorMode(SetErrorMode(0x0003) | 0x0003);
@@ -139,7 +142,8 @@ int wmain(int argc, wchar_t *argv[])
 		fputws(L"Options:\n", stderr);
 		fputws(L"   --clear  unset the \"archive\" bit *before* monitoring for file changes\n", stderr);
 		fputws(L"   --reset  unset the \"archive\" bit *after* a file change was detected\n", stderr);
-		fputws(L"   --quiet  do *not* print the file name that changed to standard output\n\n", stderr);
+		fputws(L"   --quiet  do *not* print the file name that changed to standard output\n", stderr);
+		fputws(L"   --debug  turn *on* additional diagnostic output (for testing only!)\n\n", stderr);
 		fputws(L"Remarks:\n", stderr);
 		fputws(L"   The operating system sets the \"archive\" bit whenever a file is changed.\n", stderr);
 		fputws(L"   If, initially, the \"archive\" bit is set, program terminates right away.\n", stderr);
@@ -158,6 +162,7 @@ int wmain(int argc, wchar_t *argv[])
 		TRY_PARSE_OPTION(clear)
 		TRY_PARSE_OPTION(reset)
 		TRY_PARSE_OPTION(quiet)
+		TRY_PARSE_OPTION(debug)
 		fwprintf(stderr, L"Error: Unknown option \"%s\" encountered!\n", argv[argOffset]);
 		goto cleanup;
 	}
@@ -202,15 +207,24 @@ int wmain(int argc, wchar_t *argv[])
 		}
 	}
 
-	//Has any file already been modified yet?
-	if (!clear)
+	//Initialize the timestamps
+	for (fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 	{
-		for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
+		attribs = getAttributes(fullPath[fileIdx], &lastModTs[fileIdx]);
+		if (attribs == INVALID_FILE_ATTRIBUTES)
 		{
-			CHECK_IF_MODFIED(fileIdx);
+			fwprintf(stderr, L"Error: File \"%s\" not found or access denied!\n", fullPath[fileIdx]);
+			goto cleanup;
+		}
+		if (attribs & FILE_ATTRIBUTE_DIRECTORY)
+		{
+			fwprintf(stderr, L"Error: Path \"%s\" points to a directory!\n", fullPath[fileIdx]);
+			goto cleanup;
 		}
 	}
-	else
+
+	//Clear the "archive" bit initially
+	if (clear)
 	{
 		for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 		{
@@ -220,18 +234,26 @@ int wmain(int argc, wchar_t *argv[])
 			}
 		}
 	}
-
+	else
+	{
+		//Has any file been modified?
+		for (fileIdx = 0; fileIdx < fileCount; ++fileIdx)
+		{
+			CHECK_IF_MODFIED(fileIdx);
+		}
+	}
+	
 	//Get directory part of path(s)
 	for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 	{
 		BOOL duplicate = FALSE;
 		const wchar_t *const directoryNext = getDirectoryPart(fullPath[fileIdx]);
-		if(!directoryNext)
+		if (!directoryNext)
 		{
 			fwprintf(stderr, L"Error: Directory part of \"%s\" could not be determined!\n", fullPath[fileIdx]);
 			goto cleanup;
 		}
-		for(dirIdx = 0; dirIdx < dirCount; ++dirIdx)
+		for (dirIdx = 0; dirIdx < dirCount; ++dirIdx)
 		{
 			if(!wcscmp(directoryNext, directoryPath[dirIdx]))
 			{
@@ -240,7 +262,7 @@ int wmain(int argc, wchar_t *argv[])
 				break;
 			}
 		}
-		if(!duplicate)
+		if (!duplicate)
 		{
 			APPEND_TO_MAP(dirCount, fileIdx);
 			directoryPath[dirCount++] = directoryNext;
@@ -252,19 +274,20 @@ int wmain(int argc, wchar_t *argv[])
 	}
 
 	//Print directory to file map (DEBUG)
-#ifndef NNDEBUG
-	for(dirIdx = 0; dirIdx < dirCount; ++dirIdx)
+	if (debug)
 	{
-		fwprintf(stderr, L"%d: %s\n", dirIdx, directoryPath[dirIdx]);
-		for(fileIdx = 0; fileIdx < dirToFilesMap[dirIdx].count; ++fileIdx)
+		for (dirIdx = 0; dirIdx < dirCount; ++dirIdx)
 		{
-			fwprintf(stderr, L"--> %d: %s\n", fileIdx, fullPath[dirToFilesMap[dirIdx].files[fileIdx]]);
+			fwprintf(stderr, L"%02d: %s\n", dirIdx, directoryPath[dirIdx]);
+			for (fileIdx = 0; fileIdx < dirToFilesMap[dirIdx].count; ++fileIdx)
+			{
+				fwprintf(stderr, L"   %02d: %s\n", fileIdx, fullPath[dirToFilesMap[dirIdx].files[fileIdx]]);
+			}
 		}
 	}
-#endif //NDEBUG
 
 	//Install file system watcher
-	for(dirIdx = 0; dirIdx < dirCount; ++dirIdx)
+	for (dirIdx = 0; dirIdx < dirCount; ++dirIdx)
 	{
 		notifyHandle[dirIdx] = FindFirstChangeNotificationW(directoryPath[dirIdx], FALSE, NOTIFY_FLAGS);
 		if (notifyHandle[dirIdx] == INVALID_HANDLE_VALUE)
@@ -275,7 +298,7 @@ int wmain(int argc, wchar_t *argv[])
 	}
 
 	//Has any file been modified?
-	for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
+	for (fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 	{
 		CHECK_IF_MODFIED(fileIdx);
 	}
@@ -287,9 +310,17 @@ int wmain(int argc, wchar_t *argv[])
 		status = WaitForMultipleObjects(dirCount, notifyHandle, FALSE, 29989U);
 		if ((status >= WAIT_OBJECT_0) && (status < WAIT_OBJECT_0 + MAXIMUM_WAIT_OBJECTS))
 		{
-			//Has any file been modified?
+			//Compute directory index
 			const DWORD notifyIdx = status - WAIT_OBJECT_0;
-			for(fileIdx = 0; fileIdx < dirToFilesMap[notifyIdx].count; ++fileIdx)
+
+			//Print DEBUG information
+			if (debug)
+			{
+				fwprintf(stderr, L"Directory #%02u was notified!\n", notifyIdx);
+			}
+
+			//Has any file been modified?
+			for (fileIdx = 0; fileIdx < dirToFilesMap[notifyIdx].count; ++fileIdx)
 			{
 				CHECK_IF_MODFIED(dirToFilesMap[notifyIdx].files[fileIdx]);
 			}
@@ -301,10 +332,10 @@ int wmain(int argc, wchar_t *argv[])
 				goto cleanup;
 			}
 		}
-		else if(status == WAIT_TIMEOUT)
+		else if (status == WAIT_TIMEOUT)
 		{
 			//Timeout encountered, check all files!
-			for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
+			for (fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 			{
 				CHECK_IF_MODFIED(fileIdx);
 			}
@@ -322,7 +353,7 @@ success:
 	if (reset)
 	{
 		Sleep(25); /*some extra delay*/
-		for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
+		for (fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 		{
 			if (!clearAttribute(fullPath[fileIdx], FILE_ATTRIBUTE_ARCHIVE))
 			{
@@ -333,12 +364,12 @@ success:
 
 	//Perform final clean-up
 cleanup:
-	for(dirIdx = 0; dirIdx < dirCount; ++dirIdx)
+	for (dirIdx = 0; dirIdx < dirCount; ++dirIdx)
 	{
 		FREE(directoryPath[dirIdx]);
 		CLOSE_NOTIFY_HANDLE(notifyHandle[dirIdx]);
 	}
-	for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
+	for (fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 	{
 		FREE(fullPath[fileIdx]);
 	}

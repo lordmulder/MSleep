@@ -13,7 +13,7 @@
 unsigned long long getCurrentTime(void);
 unsigned long long getStartupTime(void);
 
-DWORD getAttributes(const wchar_t *const filePath);
+DWORD getAttributes(const wchar_t *const filePath, unsigned long long *const timeStamp);
 BOOL clearAttribute(const wchar_t *const filePath, const DWORD mask);
 
 const wchar_t* getCanonicalPath(const wchar_t *const fileName);
