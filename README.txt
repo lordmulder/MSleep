@@ -27,6 +27,7 @@ Options:
    --clear  unset the "archive" bit *before* monitoring for file changes
    --reset  unset the "archive" bit *after* a file change was detected
    --quiet  do *not* print the file name that changed to standard output
+   --debug  turn *on* additional diagnostic output (for testing only!)
 
 Remarks:
    The operating system sets the "archive" bit whenever a file is changed.
