@@ -64,19 +64,14 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 #define CHECK_IF_MODFIED(IDX) do \
 { \
 	attribs = getAttributes(fullPath[(IDX)], &timeStamp); \
-	if (attribs == INVALID_FILE_ATTRIBUTES) \
+	if ((attribs == INVALID_FILE_ATTRIBUTES) || (attribs & FILE_ATTRIBUTE_DIRECTORY)) \
 	{ \
 		fwprintf(stderr, L"Error: File \"%s\" does not exist anymore!\n", fullPath[(IDX)]); \
 		goto cleanup; \
 	} \
-	if (attribs & FILE_ATTRIBUTE_DIRECTORY) \
-	{ \
-		fwprintf(stderr, L"Error: Path \"%s\" points to a directory!\n", fullPath[(IDX)]); \
-		goto cleanup; \
-	} \
 	if ((attribs & FILE_ATTRIBUTE_ARCHIVE) || (timeStamp != lastModTs[(IDX)])) \
 	{ \
-		if(!quiet) \
+		if (!quiet) \
 		{ \
 			fwprintf(stdout, L"%s\n", fullPath[(IDX)]); \
 		} \

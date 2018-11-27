@@ -70,7 +70,7 @@ DWORD getAttributes(const wchar_t *const filePath, unsigned long long *const tim
 	DWORD loop;
 	WIN32_FILE_ATTRIBUTE_DATA attribs;
 
-	for (loop = 0U; loop <= 13U; ++loop)
+	for (loop = 0U; loop <= 7U; ++loop)
 	{
 		if (loop > 0U)
 		{
@@ -207,7 +207,7 @@ static const wchar_t* getFinalPathName(const wchar_t *const fileName)
 	for (loop = 0L; loop < 3L; ++loop)
 	{
 		//Try to get full path name
-		const DWORD result = getFinalPathNamePtr(handle, buffer, size, VOLUME_NAME_DOS);
+		const DWORD result = getFinalPathNamePtr(handle, buffer, (DWORD)size, VOLUME_NAME_DOS);
 		if (result < 1U)
 		{
 			goto failure;
@@ -246,7 +246,7 @@ static const wchar_t* getFullPathName(const wchar_t *const fileName)
 	for (loop = 0L; loop < 3L; ++loop)
 	{
 		//Try to get full path name
-		const DWORD result = GetFullPathNameW(fileName, size, buffer, NULL);
+		const DWORD result = GetFullPathNameW(fileName, (DWORD)size, buffer, NULL);
 		if (result < 1U)
 		{
 			goto failure;
@@ -281,7 +281,7 @@ static const wchar_t* getLongPathName(const wchar_t *const fileName)
 	for (loop = 0L; loop < 3L; ++loop)
 	{
 		//Try to get full path name
-		const DWORD result = GetLongPathNameW(fileName, buffer, size);
+		const DWORD result = GetLongPathNameW(fileName, buffer, (DWORD)size);
 		if (result < 1U)
 		{
 			goto failure;
