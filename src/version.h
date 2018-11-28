@@ -16,7 +16,7 @@
 #define VER_MSLEEP_MAJOR      1
 #define VER_MSLEEP_MINOR_HI   0
 #define VER_MSLEEP_MINOR_LO   3
-#define VER_MSLEEP_PATCH      0
+#define VER_MSLEEP_PATCH      1
 
 ///////////////////////////////////////////////////////////////////////////////
 // Helper macros (aka: having fun with the C pre-processor)
