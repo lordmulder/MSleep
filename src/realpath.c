@@ -52,7 +52,7 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 /* ======================================================================= */
 
 #define TRY_PARSE_OPTION(VAL, NAME) \
-	if(!_wcsicmp(argv[argOffset] + 2U, L#NAME)) \
+	if (!_wcsicmp(argv[argOffset] + 2U, L#NAME)) \
 	{ \
 		if(check_mode && (check_mode != (VAL))) \
 		{ \

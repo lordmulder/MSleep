@@ -52,10 +52,10 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 /* ======================================================================= */
 
 #define MAXIMUM_FILES 32 /*maximum number of files*/
-#define NOTIFY_FLAGS (FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_LAST_WRITE)
+#define NOTIFY_FLAGS (FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME | FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_CREATION)
 
 #define TRY_PARSE_OPTION(NAME) \
-	if(!_wcsicmp(argv[argOffset] + 2U, L#NAME)) \
+	if (!_wcsicmp(argv[argOffset] + 2U, L#NAME)) \
 	{ \
 		NAME = TRUE; \
 		continue; \
@@ -63,17 +63,18 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 
 #define CHECK_IF_MODFIED(IDX) do \
 { \
-	attribs = getAttributes(fullPath[(IDX)], &timeStamp); \
-	if ((attribs == INVALID_FILE_ATTRIBUTES) || (attribs & FILE_ATTRIBUTE_DIRECTORY)) \
+	unsigned long long _timeStamp; \
+	const DWORD _attribs = getAttributes(fullPath[(IDX)], &_timeStamp); \
+	if ((_attribs == INVALID_FILE_ATTRIBUTES) || (_attribs & FILE_ATTRIBUTE_DIRECTORY)) \
 	{ \
 		fwprintf(stderr, L"Error: File \"%s\" does not exist anymore!\n", fullPath[(IDX)]); \
 		goto cleanup; \
 	} \
-	if ((attribs & FILE_ATTRIBUTE_ARCHIVE) || (timeStamp != lastModTs[(IDX)])) \
+	if ((_attribs & FILE_ATTRIBUTE_ARCHIVE) || (_timeStamp != lastModTs[(IDX)])) \
 	{ \
 		if (!quiet) \
 		{ \
-			fwprintf(stdout, L"%s\n", fullPath[(IDX)]); \
+			fwprintf(stdout, L"%s\n", fullPath[(IDX)]); /*file was modified*/ \
 		} \
 		goto success; \
 	} \
@@ -115,10 +116,8 @@ static HANDLE notifyHandle[MAXIMUM_FILES];
 
 int wmain(int argc, wchar_t *argv[])
 {
-	DWORD attribs = 0UL, status = 0UL;
-	int result = EXIT_FAILURE, argOffset = 1, fileCount = 0, fileIdx = 0, dirCount = 0, dirIdx = 0;
-	unsigned long long timeStamp = 0ULL;
 	BOOL clear = FALSE, reset = FALSE, quiet = FALSE, debug = FALSE;
+	int result = EXIT_FAILURE, argOffset = 1, fileCount = 0, fileIdx = 0, dirCount = 0, dirIdx = 0;
 
 	//Initialize
 	SetErrorMode(SetErrorMode(0x0003) | 0x0003);
@@ -184,7 +183,7 @@ int wmain(int argc, wchar_t *argv[])
 			fwprintf(stderr, L"Error: Path \"%s\" could not be resolved!\n", argv[argOffset]);
 			goto cleanup;
 		}
-		for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
+		for (fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 		{
 			if(!wcscmp(fullPathNext, fullPath[fileIdx]))
 			{
@@ -192,7 +191,7 @@ int wmain(int argc, wchar_t *argv[])
 				break;
 			}
 		}
-		if(!duplicate)
+		if (!duplicate)
 		{
 			fullPath[fileCount++] = fullPathNext;
 		}
@@ -202,10 +201,10 @@ int wmain(int argc, wchar_t *argv[])
 		}
 	}
 
-	//Initialize the timestamps
+	//Initialize all input file(s)
 	for (fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 	{
-		attribs = getAttributes(fullPath[fileIdx], &lastModTs[fileIdx]);
+		const DWORD attribs = getAttributes(fullPath[fileIdx], &lastModTs[fileIdx]);
 		if (attribs == INVALID_FILE_ATTRIBUTES)
 		{
 			fwprintf(stderr, L"Error: File \"%s\" not found or access denied!\n", fullPath[fileIdx]);
@@ -215,6 +214,14 @@ int wmain(int argc, wchar_t *argv[])
 		{
 			fwprintf(stderr, L"Error: Path \"%s\" points to a directory!\n", fullPath[fileIdx]);
 			goto cleanup;
+		}
+		if ((!clear) && (attribs & FILE_ATTRIBUTE_ARCHIVE))
+		{
+			if (!quiet)
+			{
+				fwprintf(stdout, L"%s\n", fullPath[fileIdx]); /*file was modified*/
+			}
+			goto success;
 		}
 	}
 
@@ -229,15 +236,7 @@ int wmain(int argc, wchar_t *argv[])
 			}
 		}
 	}
-	else
-	{
-		//Has any file been modified?
-		for (fileIdx = 0; fileIdx < fileCount; ++fileIdx)
-		{
-			CHECK_IF_MODFIED(fileIdx);
-		}
-	}
-	
+
 	//Get directory part of path(s)
 	for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 	{
@@ -302,24 +301,24 @@ int wmain(int argc, wchar_t *argv[])
 	for (;;)
 	{
 		//Wait for next event
-		status = WaitForMultipleObjects(dirCount, notifyHandle, FALSE, 29989U);
-		if ((status >= WAIT_OBJECT_0) && (status < WAIT_OBJECT_0 + MAXIMUM_WAIT_OBJECTS))
+		const DWORD status = WaitForMultipleObjects(dirCount, notifyHandle, FALSE, 29989U);
+		if ((status >= WAIT_OBJECT_0) && (status < (WAIT_OBJECT_0 + dirCount)))
 		{
 			//Compute directory index
 			const DWORD notifyIdx = status - WAIT_OBJECT_0;
-
+			
 			//Print DEBUG information
 			if (debug)
 			{
 				fwprintf(stderr, L"Directory #%02u was notified!\n", notifyIdx);
 			}
-
+			
 			//Has any file been modified?
 			for (fileIdx = 0; fileIdx < dirToFilesMap[notifyIdx].count; ++fileIdx)
 			{
 				CHECK_IF_MODFIED(dirToFilesMap[notifyIdx].files[fileIdx]);
 			}
-
+			
 			//Request the *next* notification
 			if (!FindNextChangeNotification(notifyHandle[notifyIdx]))
 			{
