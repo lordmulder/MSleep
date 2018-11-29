@@ -88,11 +88,11 @@ int _wmain(int argc, wchar_t *argv[])
 		fputws(L"realpath [" TEXT(__DATE__) L"]\n", stderr);
 		fputws(L"Convert file name or relative path into fully qualified \"canonical\" path.\n\n", stderr);
 		fputws(L"Usage:\n", stderr);
-		fputws(L"   realpath.exe [options] <filename>\n\n", stderr);
+		fputws(L"   realpath.exe [options] <filename_1> [<filename_2> ... <filename_N>]\n\n", stderr);
 		fputws(L"Options:\n", stderr);
-		fputws(L"   --exists     check whether the target file system object exists\n", stderr);
-		fputws(L"   --file       check whether the path points to a file\n", stderr);
-		fputws(L"   --directory  check whether the path points to a directory\n", stderr);
+		fputws(L"   --exists     requires the target file system object to exist\n", stderr);
+		fputws(L"   --file       requires the target path to point to a regular file\n", stderr);
+		fputws(L"   --directory  requires the target path to point to a directory\n", stderr);
 		goto cleanup;
 	}
 

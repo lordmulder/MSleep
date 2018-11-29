@@ -40,9 +40,9 @@ realpath
 Convert file name or relative path into fully qualified "canonical" path.
 
 Usage:
-   realpath.exe [options] <filename>
+   realpath.exe [options] <filename_1> [<filename_2> ... <filename_N>]
 
 Options:
-   --exists     check whether the target file system object exists
-   --file       check whether the path points to a file
-   --directory  check whether the path points to a directory
+   --exists     requires the target file system object to exist
+   --file       requires the target path to point to a regular file
+   --directory  requires the target path to point to a directory
