@@ -22,7 +22,9 @@ _CRTIMP extern FILE _iob[];
 #undef stderr
 #define stdout (&_iob[1])
 #define stderr (&_iob[2])
-#endif //ENABLE_VC6_WORKAROUNDS
+#else
+#define _wmain wmain
+#endif
 
 /* ======================================================================= */
 /* UTILITY FUNCTIONS                                                       */
@@ -114,7 +116,7 @@ static unsigned long long lastModTs[MAXIMUM_FILES];
 static fileIndex_list dirToFilesMap[MAXIMUM_FILES];
 static HANDLE notifyHandle[MAXIMUM_FILES];
 
-int wmain(int argc, wchar_t *argv[])
+int _wmain(int argc, wchar_t *argv[])
 {
 	BOOL clear = FALSE, reset = FALSE, quiet = FALSE, debug = FALSE;
 	int result = EXIT_FAILURE, argOffset = 1, fileCount = 0, fileIdx = 0, dirCount = 0, dirIdx = 0;

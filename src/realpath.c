@@ -22,7 +22,9 @@ _CRTIMP extern FILE _iob[];
 #undef stderr
 #define stdout (&_iob[1])
 #define stderr (&_iob[2])
-#endif //ENABLE_VC6_WORKAROUNDS
+#else
+#define _wmain wmain
+#endif
 
 /* ======================================================================= */
 /* UTILITY FUNCTIONS                                                       */
@@ -67,7 +69,7 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 /* MAIN                                                                    */
 /* ======================================================================= */
 
-int wmain(int argc, wchar_t *argv[])
+int _wmain(int argc, wchar_t *argv[])
 {
 	int result = EXIT_FAILURE, argOffset = 1;
 	const wchar_t *fullPath = NULL;
@@ -115,48 +117,49 @@ int wmain(int argc, wchar_t *argv[])
 		fputws(L"Error: No file name specified. Nothing to do!\n", stderr);
 		goto cleanup;
 	}
-	if ((argc - argOffset) > 1)
-	{
-		fputws(L"Error: Found excess command-line argument!\n", stderr);
-		goto cleanup;
-	}
 
-	//Convert to absoloute paths
-	fullPath = getCanonicalPath(argv[argOffset]);
-	if (!fullPath)
+	//Process all files
+	for (; argOffset < argc; ++argOffset)
 	{
-		fwprintf(stderr, L"Error: Path \"%s\" could not be resolved!\n", argv[argOffset]);
-		goto cleanup;
-	}
-
-	//Check if file exists
-	if(check_mode) 
-	{
-		if ((attribs = getAttributes(fullPath, NULL)) == INVALID_FILE_ATTRIBUTES) \
-		{ 
-			fwprintf(stderr, L"Error: File \"%s\" not found or access denied!\n", fullPath);
+		//Convert to absoloute paths
+		fullPath = getCanonicalPath(argv[argOffset]);
+		if (!fullPath)
+		{
+			fwprintf(stderr, L"Error: Path \"%s\" could not be resolved!\n", argv[argOffset]);
 			goto cleanup;
 		}
-		switch(check_mode) {
-		case 2:
-			if(attribs & FILE_ATTRIBUTE_DIRECTORY)
-			{
-				fwprintf(stderr, L"Error: Path \"%s\" points to a directory!\n", fullPath); \
+
+		//Check if file exists
+		if(check_mode) 
+		{
+			if ((attribs = getAttributes(fullPath, NULL)) == INVALID_FILE_ATTRIBUTES) \
+			{ 
+				fwprintf(stderr, L"Error: File \"%s\" not found or access denied!\n", fullPath);
 				goto cleanup;
 			}
-			break;
-		case 3:
-			if (!(attribs & FILE_ATTRIBUTE_DIRECTORY))
-			{
-				fwprintf(stderr, L"Error: Path \"%s\" points to a regular file!\n", fullPath); \
-				goto cleanup;
+			switch(check_mode) {
+			case 2:
+				if(attribs & FILE_ATTRIBUTE_DIRECTORY)
+				{
+					fwprintf(stderr, L"Error: Path \"%s\" points to a directory!\n", fullPath); \
+					goto cleanup;
+				}
+				break;
+			case 3:
+				if (!(attribs & FILE_ATTRIBUTE_DIRECTORY))
+				{
+					fwprintf(stderr, L"Error: Path \"%s\" points to a regular file!\n", fullPath); \
+					goto cleanup;
+				}
+				break;
 			}
-			break;
 		}
+
+		//Print the full path to stdout
+		_putws(fullPath);
 	}
 
-	//Print full path
-	fwprintf(stdout, L"%s\n", fullPath);
+	//Completed
 	result = EXIT_SUCCESS;
 
 	//Perform final clean-up

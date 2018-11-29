@@ -21,7 +21,7 @@ _CRTIMP extern FILE _iob[];
 #undef stderr
 #define stdout (&_iob[1])
 #define stderr (&_iob[2])
-#endif //ENABLE_VC6_WORKAROUNDS
+#endif
 
 /* ======================================================================= */
 /* UTILITY FUNCTIONS                                                       */
