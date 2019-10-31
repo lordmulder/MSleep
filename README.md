@@ -17,6 +17,11 @@ Wait (sleep) for the specified amount of time, in milliseconds.
 Usage:
    msleep.exe <timeout_ms>
 
+Exit status:
+   0 - Timeout expired normally
+   1 - Failed with error
+   2 - Interrupted by user
+
 Note: Process creation overhead will be measured and compensated.
 ```
 
@@ -34,6 +39,11 @@ Options:
    --reset  unset the "archive" bit *after* a file change was detected
    --quiet  do *not* print the file name that changed to standard output
    --debug  turn *on* additional diagnostic output (for testing only!)
+
+Exit status:
+   0 - File change was detected
+   1 - Failed with error
+   2 - Interrupted by user
 
 Remarks:
    The operating system sets the "archive" bit whenever a file is changed.
@@ -54,6 +64,11 @@ Options:
    --exists     requires the target file system object to exist
    --file       requires the target path to point to a regular file
    --directory  requires the target path to point to a directory
+
+Exit status:
+   0 - Path converted successfully
+   1 - Failed with error
+   2 - Interrupted by user
 ```
 
 
