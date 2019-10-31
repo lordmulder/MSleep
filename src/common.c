@@ -7,11 +7,36 @@
  * https://creativecommons.org/publicdomain/zero/1.0/legalcode
  */
 
+#define _CRT_SECURE_NO_WARNINGS
 #include "common.h"
 
 #include <stdlib.h>
 #include <wchar.h>
 #include <Shlwapi.h>
+
+/* ======================================================================= */
+/* PARSE UNSIGNED LONG                                                     */
+/* ======================================================================= */
+
+int parseULong(const wchar_t *str, ULONG *const out)
+{
+	unsigned long long value;
+	char c;
+	while(isspace(*str))
+	{
+		str++;
+	}
+	if(swscanf(str, _wcsnicmp(str, L"0x", 2) ? L"%I64u %c" : L"%I64x %c", &value, &c) != 1)
+	{
+		return EINVAL;
+	}
+	if(value > ULONG_MAX)
+	{
+		return ERANGE;
+	}
+	*out = (unsigned long) value;
+	return 0;
+}
 
 /* ======================================================================= */
 /* STRING BUFFER HANDLING                                                  */

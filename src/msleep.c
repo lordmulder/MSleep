@@ -9,43 +9,9 @@
 
 #include "common.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <locale.h>
-
-//VC 6.0 workaround
-#ifdef ENABLE_VC6_WORKAROUNDS
-_CRTIMP extern FILE _iob[];
-#undef stdout
-#undef stderr
-#define stdout (&_iob[1])
-#define stderr (&_iob[2])
-#endif
-
 /* ======================================================================= */
 /* UTILITY FUNCTIONS                                                       */
 /* ======================================================================= */
-
-static __inline unsigned long parseULong(const wchar_t *str, unsigned long *const out)
-{
-	unsigned long long value;
-	char c;
-	while(isspace(*str))
-	{
-		str++;
-	}
-	if(swscanf(str, _wcsnicmp(str, L"0x", 2) ? L"%I64u %c" : L"%I64x %c", &value, &c) != 1)
-	{
-		return EINVAL;
-	}
-	if(value > ULONG_MAX)
-	{
-		return ERANGE;
-	}
-	*out = (unsigned long) value;
-	return 0;;
-}
 
 static __inline unsigned long computeDelta(const unsigned long long begin, const unsigned long long end)
 {
@@ -62,10 +28,10 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 	switch (dwCtrlTyp)
 	{
 	case CTRL_C_EVENT:
-		fputs("Ctrl+C: Sleep has been interrupted !!!\n\n", stderr);
+		fputws(L"Ctrl+C: MSleep has been interrupted !!!\n\n", stderr);
 		break;
 	case CTRL_BREAK_EVENT:
-		fputs("Break: Sleep has been interrupted !!!\n\n", stderr);
+		fputws(L"Break: MSleep has been interrupted !!!\n\n", stderr);
 		break;
 	default:
 		return FALSE;
@@ -80,22 +46,26 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 /* MAIN                                                                    */
 /* ======================================================================= */
 
-int wmain(int argc, wchar_t *argv[])
+int _wmain(int argc, wchar_t *argv[])
 {
+	int error;
 	unsigned long timeout, delta;
 
 	//Initialize
-	SetErrorMode(SetErrorMode(0x0003) | 0x0003);
-	setlocale(LC_ALL, "C");
-	SetConsoleCtrlHandler(crtlHandler, TRUE);
+	INITIALIZE_C_RUNTIME();
 
 	//Check command-line arguments
 	if (argc < 2)
 	{
-		fputs("msleep [" __DATE__ "]\n", stderr);
-		fputs("Wait (sleep) for the specified amount of time, in milliseconds.\n\n", stderr);
-		fputs("Usage:\n   msleep.exe <timeout_ms>\n\n", stderr);
-		fputs("Note: Process creation overhead will be measured and compensated.\n\n", stderr);
+		fputws(L"msleep [" TEXT(__DATE__) L"]\n", stderr);
+		fputws(L"Wait (sleep) for the specified amount of time, in milliseconds.\n\n", stderr);
+		fputws(L"Usage:\n", stderr);
+		fputws(L"   msleep.exe <timeout_ms>\n\n", stderr);
+		fputws(L"Exit status:\n", stderr);
+		fputws(L"   0 - Timeout expired normally\n", stderr);
+		fputws(L"   1 - Failed with error\n", stderr);
+		fputws(L"   2 - Interrupted by user\n\n", stderr);
+		fputws(L"Note: Process creation overhead will be measured and compensated.\n\n", stderr);
 		return EXIT_FAILURE;
 	}
 
@@ -107,14 +77,17 @@ int wmain(int argc, wchar_t *argv[])
 	}
 
 	//Parse timeout
-	switch (parseULong(argv[1], &timeout))
+	if(error = parseULong(argv[1], &timeout))
 	{
-	case EINVAL:
-		fputs("Error: Given timeout value could not be parsed!\n\n", stderr);
-		return EXIT_FAILURE;
-	case ERANGE:
-		fputs("Error: Given timeout value is out of range!\n\n", stderr);
-		return EXIT_FAILURE;
+		switch (error)
+		{
+		case ERANGE:
+			fputws(L"Error: Given timeout value is out of range!\n\n", stderr);
+			return EXIT_FAILURE;
+		default:
+			fputws(L"Error: Given timeout value could not be parsed!\n\n", stderr);
+			return EXIT_FAILURE;
+		}
 	}
 
 	//Sleep remaining time

@@ -9,6 +9,25 @@
 
 #define WIN32_LEAN_AND_MEAN 1
 #include <Windows.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <locale.h>
+#include <errno.h>
+#include <io.h>
+#include <fcntl.h>
+
+//VC 6.0 workaround
+#ifdef ENABLE_VC6_WORKAROUNDS
+_CRTIMP extern FILE _iob[];
+#undef stdout
+#undef stderr
+#define stdout (&_iob[1])
+#define stderr (&_iob[2])
+#else
+#define _wmain wmain
+#endif
+
+int parseULong(const wchar_t *str, ULONG *const out);
 
 unsigned long long getCurrentTime(void);
 unsigned long long getStartupTime(void);
@@ -18,6 +37,17 @@ BOOL clearAttribute(const wchar_t *const filePath, const DWORD mask);
 
 const wchar_t* getCanonicalPath(const wchar_t *const fileName);
 const wchar_t* getDirectoryPart(const wchar_t *const fullPath);
+
+/* initialize CRT */
+#define INITIALIZE_C_RUNTIME() do \
+{ \
+	SetErrorMode(SetErrorMode(0x0003) | 0x0003); \
+	setlocale(LC_ALL, "C"); \
+	SetConsoleCtrlHandler(crtlHandler, TRUE); \
+	_setmode(_fileno(stdout), _O_U8TEXT); \
+	_setmode(_fileno(stderr), _O_U8TEXT); \
+} \
+while(0)
 
 /* free buffer, if not NULL */
 #define FREE(PTR) do \

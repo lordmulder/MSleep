@@ -9,23 +9,6 @@
 
 #include "common.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <locale.h>
-#include <io.h>
-#include <fcntl.h>
-
-//VC 6.0 workaround
-#ifdef ENABLE_VC6_WORKAROUNDS
-_CRTIMP extern FILE _iob[];
-#undef stdout
-#undef stderr
-#define stdout (&_iob[1])
-#define stderr (&_iob[2])
-#else
-#define _wmain wmain
-#endif
-
 /* ======================================================================= */
 /* UTILITY FUNCTIONS                                                       */
 /* ======================================================================= */
@@ -35,10 +18,10 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 	switch (dwCtrlTyp)
 	{
 	case CTRL_C_EVENT:
-		fputws(L"Ctrl+C: Notifywait has been interrupted !!!\n", stderr);
+		fputws(L"Ctrl+C: Realpath has been interrupted !!!\n\n", stderr);
 		break;
 	case CTRL_BREAK_EVENT:
-		fputws(L"Break: Notifywait has been interrupted !!!\n", stderr);
+		fputws(L"Break: Realpath has been interrupted !!!\n\n", stderr);
 		break;
 	default:
 		return FALSE;
@@ -58,7 +41,7 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 	{ \
 		if(check_mode && (check_mode != (VAL))) \
 		{ \
-			fputws(L"Error: Options are mutually exclusive!\n", stderr); \
+			fputws(L"Error: Options are mutually exclusive!\n\n", stderr); \
 			goto cleanup; \
 		} \
 		check_mode = (VAL); \
@@ -76,11 +59,7 @@ int _wmain(int argc, wchar_t *argv[])
 	DWORD attribs = 0UL, check_mode = 0UL;
 
 	//Initialize
-	SetErrorMode(SetErrorMode(0x0003) | 0x0003);
-	setlocale(LC_ALL, "C");
-	SetConsoleCtrlHandler(crtlHandler, TRUE);
-	_setmode(_fileno(stdout), _O_U8TEXT);
-	_setmode(_fileno(stderr), _O_U8TEXT);
+	INITIALIZE_C_RUNTIME();
 
 	//Check command-line arguments
 	if (argc < 2)
@@ -92,8 +71,12 @@ int _wmain(int argc, wchar_t *argv[])
 		fputws(L"Options:\n", stderr);
 		fputws(L"   --exists     requires the target file system object to exist\n", stderr);
 		fputws(L"   --file       requires the target path to point to a regular file\n", stderr);
-		fputws(L"   --directory  requires the target path to point to a directory\n", stderr);
-		goto cleanup;
+		fputws(L"   --directory  requires the target path to point to a directory\n\n", stderr);
+		fputws(L"Exit status:\n", stderr);
+		fputws(L"   0 - Path converted successfully\n", stderr);
+		fputws(L"   1 - Failed with error\n", stderr);
+		fputws(L"   2 - Interrupted by user\n\n", stderr);
+		return EXIT_FAILURE;
 	}
 
 	//Parse command-line options
@@ -107,15 +90,15 @@ int _wmain(int argc, wchar_t *argv[])
 		TRY_PARSE_OPTION(1, exists)
 		TRY_PARSE_OPTION(2, file)
 		TRY_PARSE_OPTION(3, directory)
-		fwprintf(stderr, L"Error: Unknown option \"%s\" encountered!\n", argv[argOffset]);
-		goto cleanup;
+		fwprintf(stderr, L"Error: Unknown option \"%s\" encountered!\n\n", argv[argOffset]);
+		return EXIT_FAILURE;
 	}
 
 	//Check remaining file count
 	if (argOffset >= argc)
 	{
-		fputws(L"Error: No file name specified. Nothing to do!\n", stderr);
-		goto cleanup;
+		fputws(L"Error: No file name specified. Nothing to do!\n\n", stderr);
+		return EXIT_FAILURE;
 	}
 
 	//Process all files
@@ -125,7 +108,7 @@ int _wmain(int argc, wchar_t *argv[])
 		fullPath = getCanonicalPath(argv[argOffset]);
 		if (!fullPath)
 		{
-			fwprintf(stderr, L"Error: Path \"%s\" could not be resolved!\n", argv[argOffset]);
+			fwprintf(stderr, L"Error: Path \"%s\" could not be resolved!\n\n", argv[argOffset]);
 			goto cleanup;
 		}
 
@@ -134,21 +117,21 @@ int _wmain(int argc, wchar_t *argv[])
 		{
 			if ((attribs = getAttributes(fullPath, NULL)) == INVALID_FILE_ATTRIBUTES) \
 			{ 
-				fwprintf(stderr, L"Error: File \"%s\" not found or access denied!\n", fullPath);
+				fwprintf(stderr, L"Error: File \"%s\" not found or access denied!\n\n", fullPath);
 				goto cleanup;
 			}
 			switch(check_mode) {
 			case 2:
 				if(attribs & FILE_ATTRIBUTE_DIRECTORY)
 				{
-					fwprintf(stderr, L"Error: Path \"%s\" points to a directory!\n", fullPath); \
+					fwprintf(stderr, L"Error: Path \"%s\" points to a directory!\n\n", fullPath); \
 					goto cleanup;
 				}
 				break;
 			case 3:
 				if (!(attribs & FILE_ATTRIBUTE_DIRECTORY))
 				{
-					fwprintf(stderr, L"Error: Path \"%s\" points to a regular file!\n", fullPath); \
+					fwprintf(stderr, L"Error: Path \"%s\" points to a regular file!\n\n", fullPath); \
 					goto cleanup;
 				}
 				break;
