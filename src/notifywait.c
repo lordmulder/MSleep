@@ -42,7 +42,7 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 #define TRY_PARSE_OPTION(NAME) \
 	if (!_wcsicmp(argv[argOffset] + 2U, L#NAME)) \
 	{ \
-		NAME = TRUE; \
+		opt_##NAME = TRUE; \
 		continue; \
 	}
 
@@ -57,7 +57,7 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 	} \
 	if ((_attribs & FILE_ATTRIBUTE_ARCHIVE) || (_timeStamp != lastModTs[(IDX)])) \
 	{ \
-		if (!quiet) \
+		if (!opt_quiet) \
 		{ \
 			fwprintf(stdout, L"%s\n", fullPath[(IDX)]); /*file was modified*/ \
 		} \
@@ -101,7 +101,7 @@ static HANDLE notifyHandle[MAXIMUM_FILES];
 
 int _wmain(int argc, wchar_t *argv[])
 {
-	BOOL clear = FALSE, reset = FALSE, quiet = FALSE, debug = FALSE;
+	BOOL opt_clear = FALSE, opt_reset = FALSE, opt_quiet = FALSE, opt_debug = FALSE;
 	int result = EXIT_FAILURE, argOffset = 1, fileCount = 0, fileIdx = 0, dirCount = 0, dirIdx = 0;
 
 	//Initialize
@@ -200,9 +200,9 @@ int _wmain(int argc, wchar_t *argv[])
 			fwprintf(stderr, L"Error: Path \"%s\" points to a directory!\n\n", fullPath[fileIdx]);
 			goto cleanup;
 		}
-		if ((!clear) && (attribs & FILE_ATTRIBUTE_ARCHIVE))
+		if ((!opt_clear) && (attribs & FILE_ATTRIBUTE_ARCHIVE))
 		{
-			if (!quiet)
+			if (!opt_quiet)
 			{
 				fwprintf(stdout, L"%s\n", fullPath[fileIdx]); /*file was modified*/
 			}
@@ -211,7 +211,7 @@ int _wmain(int argc, wchar_t *argv[])
 	}
 
 	//Clear the "archive" bit initially
-	if (clear)
+	if (opt_clear)
 	{
 		for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 		{
@@ -253,7 +253,7 @@ int _wmain(int argc, wchar_t *argv[])
 	}
 
 	//Print directory to file map (DEBUG)
-	if (debug)
+	if (opt_debug)
 	{
 		for (dirIdx = 0; dirIdx < dirCount; ++dirIdx)
 		{
@@ -294,7 +294,7 @@ int _wmain(int argc, wchar_t *argv[])
 			const DWORD notifyIdx = status - WAIT_OBJECT_0;
 			
 			//Print DEBUG information
-			if (debug)
+			if (opt_debug)
 			{
 				fwprintf(stderr, L"Directory #%02u was notified!\n", notifyIdx);
 			}
@@ -330,7 +330,7 @@ int _wmain(int argc, wchar_t *argv[])
 	//Completed successfully
 success:
 	result = EXIT_SUCCESS;
-	if (reset)
+	if (opt_reset)
 	{
 		Sleep(25); /*some extra delay*/
 		for (fileIdx = 0; fileIdx < fileCount; ++fileIdx)

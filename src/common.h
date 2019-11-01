@@ -37,6 +37,7 @@ BOOL clearAttribute(const wchar_t *const filePath, const DWORD mask);
 
 const wchar_t* getCanonicalPath(const wchar_t *const fileName);
 const wchar_t* getDirectoryPart(const wchar_t *const fullPath);
+const wchar_t* getEnvironmentString(const wchar_t *const name);
 
 /* initialize CRT */
 #define INITIALIZE_C_RUNTIME() do \

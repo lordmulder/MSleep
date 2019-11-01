@@ -373,3 +373,17 @@ const wchar_t* getDirectoryPart(const wchar_t *const fullPath)
 
 	return NULL;
 }
+
+/* ======================================================================= */
+/* ENVIRONMENT STRING                                                      */
+/* ======================================================================= */
+
+const wchar_t* getEnvironmentString(const wchar_t *const name)
+{
+	const WCHAR *const envstr = _wgetenv(name);
+	if(envstr && envstr[0U])
+	{
+		return _wcsdup(envstr);
+	}
+	return NULL;
+}

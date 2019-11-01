@@ -71,6 +71,33 @@ Exit status:
    2 - Interrupted by user
 ```
 
+waitpid
+-------
+
+Wait (sleep) until the specified processes all have terminated.
+
+```
+Usage:
+   waitpid.exe [options] <PID_1> [<PID_2> ... <PID_n>]
+
+Options:
+   --waitone   exit as soon as *any* of the specified processes terminates
+   --shutdown  power off the machine, as soon as the processes have terminated
+   --timeout   exit as soon as the timeout (default: 30 sec) has expired
+   --pedantic  abort with error, if a specified process can *not* be opened
+   --quiet     do *not* print any diagnostic messages; errors are shown anyway
+
+Environment:
+   WAITPID_TIMEOUT  timeout in millisonds, only if `--timeout` is specified
+
+Exit status:
+   0 - Processes have terminated normally
+   1 - Failed with error
+   2 - Aborted because the timeout has expired
+   3 - Interrupted by user
+   
+```
+
 
 Platform Support
 ================

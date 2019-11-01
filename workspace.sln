@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "notifywait", "notifywait.vc
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "realpath", "realpath.vcxproj", "{384185CB-3307-4854-AC5C-093FF00EC084}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "waitpid", "waitpid.vcxproj", "{65BC72B8-8409-4658-AC42-565CF305CA04}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -39,6 +41,14 @@ Global
 		{384185CB-3307-4854-AC5C-093FF00EC084}.Release|Win32.Build.0 = Release|Win32
 		{384185CB-3307-4854-AC5C-093FF00EC084}.Release|x64.ActiveCfg = Release|x64
 		{384185CB-3307-4854-AC5C-093FF00EC084}.Release|x64.Build.0 = Release|x64
+		{65BC72B8-8409-4658-AC42-565CF305CA04}.Debug|Win32.ActiveCfg = Debug|Win32
+		{65BC72B8-8409-4658-AC42-565CF305CA04}.Debug|Win32.Build.0 = Debug|Win32
+		{65BC72B8-8409-4658-AC42-565CF305CA04}.Debug|x64.ActiveCfg = Debug|x64
+		{65BC72B8-8409-4658-AC42-565CF305CA04}.Debug|x64.Build.0 = Debug|x64
+		{65BC72B8-8409-4658-AC42-565CF305CA04}.Release|Win32.ActiveCfg = Release|Win32
+		{65BC72B8-8409-4658-AC42-565CF305CA04}.Release|Win32.Build.0 = Release|Win32
+		{65BC72B8-8409-4658-AC42-565CF305CA04}.Release|x64.ActiveCfg = Release|x64
+		{65BC72B8-8409-4658-AC42-565CF305CA04}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
