@@ -142,6 +142,7 @@ int _wmain(int argc, wchar_t *argv[])
 			{
 				timeout = value; /*ovrride timeout*/
 			}
+			FREE(envstr);
 		}
 	}
 
@@ -167,6 +168,7 @@ int _wmain(int argc, wchar_t *argv[])
 			fwprintf(stderr, L"Error: Specified PID \"%s\"is invalid!\n\n", argv[argOffset]);
 			return EXIT_FAILURE;
 		}
+		currentPid &= ~0x3L;
 		for (idx = 0U; idx < pidCount; ++idx)
 		{
 			if (pids[idx] == currentPid)
@@ -238,11 +240,11 @@ int _wmain(int argc, wchar_t *argv[])
 	//Wait for processes to terminate
 	if (procCount > 1U)
 	{
-		waitStatus = WaitForMultipleObjects(procCount, procHandles, !opt_waitone, timeout);
+		waitStatus = WaitForMultipleObjects(procCount, procHandles, !opt_waitone, opt_timeout ? timeout : INFINITE);
 	}
 	else
 	{
-		waitStatus = WaitForSingleObject(procHandles[0U], timeout);
+		waitStatus = WaitForSingleObject(procHandles[0U], opt_timeout ? timeout : INFINITE);
 	}
 
 	//Check the resulting wait status
