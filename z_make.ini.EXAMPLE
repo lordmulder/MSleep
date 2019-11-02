@@ -1,0 +1,5 @@
+[PATHS]
+MSVC_PATH=C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC
+GIT_PATH=C:\Program Files\Git
+PANDOC_PATH=C:\Program Files\Pandoc
+JAVA_HOME=C:\AdoptOpenJDK\jdk-8.0.232.09-hotspot
