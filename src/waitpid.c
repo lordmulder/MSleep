@@ -18,10 +18,10 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 	switch (dwCtrlTyp)
 	{
 	case CTRL_C_EVENT:
-		fputws(L"Ctrl+C: Waitpid has been interrupted !!!\n\n", stderr);
+		wprintln(stderr, L"Ctrl+C: Waitpid has been interrupted !!!\n");
 		break;
 	case CTRL_BREAK_EVENT:
-		fputws(L"Break: Waitpid has been interrupted !!!\n\n", stderr);
+		wprintln(stderr, L"Break: Waitpid has been interrupted !!!\n");
 		break;
 	default:
 		return FALSE;
@@ -83,31 +83,28 @@ int wmain(int argc, wchar_t *argv[])
 	DWORD idx, error, pidCount = 0U, procCount = 0U, timeout = 30000U, waitStatus = MAXDWORD;
 
 	//Initialize
-	SetErrorMode(SetErrorMode(0x0003) | 0x0003);
-	setlocale(LC_ALL, "C");
-	SetConsoleCtrlHandler(crtlHandler, TRUE);
-	_setmode(_fileno(stdout), _O_U8TEXT);
-	_setmode(_fileno(stderr), _O_U8TEXT);
+	INITIALIZE_C_RUNTIME();
 
 	//Check command-line arguments
 	if ((argc < 2) || (!_wcsicmp(argv[1U], L"/?")) || (!_wcsicmp(argv[1U], L"--help")))
 	{
 		fwprintf(stderr, L"waitpid %s\n", PROGRAM_VERSION);
-		fputws(L"Wait (sleep) until the specified processes all have terminated.\n\n", stderr);
-		fputws(L"Usage:\n   waitpid.exe [options] <PID_1> [<PID_2> ... <PID_n>]\n\n", stderr);
-		fputws(L"Options:\n", stderr);
-		fputws(L"   --waitone   exit as soon as *any* of the specified processes terminates\n", stderr);
-		fputws(L"   --shutdown  power off the machine, as soon as the processes have terminated\n", stderr);
-		fputws(L"   --timeout   exit as soon as the timeout (default: 30 sec) has expired\n", stderr);
-		fputws(L"   --pedantic  abort with error, if a specified process can *not* be opened\n", stderr);
-		fputws(L"   --quiet     do *not* print any diagnostic messages; errors are shown anyway\n\n", stderr);
-		fputws(L"Environment:\n", stderr);
-		fputws(L"   WAITPID_TIMEOUT  timeout in millisonds, only if `--timeout` is specified\n\n", stderr);
-		fputws(L"Exit status:\n", stderr);
-		fputws(L"   0 - Processes have terminated normally\n", stderr);
-		fputws(L"   1 - Failed with error\n", stderr);
-		fputws(L"   2 - Aborted because the timeout has expired\n", stderr);
-		fputws(L"   3 - Interrupted by user\n\n", stderr);
+		wprintln(stderr, L"Wait (sleep) until the specified processes all have terminated.\n");
+		wprintln(stderr, L"Usage:");
+		wprintln(stderr, L"   waitpid.exe [options] <PID_1> [<PID_2> ... <PID_n>]\n");
+		wprintln(stderr, L"Options:");
+		wprintln(stderr, L"   --waitone   exit as soon as *any* of the specified processes terminates");
+		wprintln(stderr, L"   --shutdown  power off the machine, as soon as the processes have terminated");
+		wprintln(stderr, L"   --timeout   exit as soon as the timeout (default: 30 sec) has expired");
+		wprintln(stderr, L"   --pedantic  abort with error, if a specified process can *not* be opened");
+		wprintln(stderr, L"   --quiet     do *not* print any diagnostic messages; errors are shown anyway\n");
+		wprintln(stderr, L"Environment:");
+		wprintln(stderr, L"   WAITPID_TIMEOUT  timeout in millisonds, only if `--timeout` is specified\n");
+		wprintln(stderr, L"Exit status:");
+		wprintln(stderr, L"   0 - Processes have terminated normally");
+		wprintln(stderr, L"   1 - Failed with error");
+		wprintln(stderr, L"   2 - Aborted because the timeout has expired");
+		wprintln(stderr, L"   3 - Interrupted by user\n");
 		return EXIT_FAILURE;
 	}
 
@@ -137,7 +134,7 @@ int wmain(int argc, wchar_t *argv[])
 			DWORD value;
 			if (parseULong(envstr, &value) || (value < 1U) || (value == INFINITE))
 			{
-				fputws(L"Warning: WAITPID_TIMEOUT is invalid. Using default timeout!\n\n", stderr);
+				wprintln(stderr, L"Warning: WAITPID_TIMEOUT is invalid. Using default timeout!\n");
 			}
 			else
 			{
@@ -150,7 +147,7 @@ int wmain(int argc, wchar_t *argv[])
 	//Check remaining argument count
 	if (argOffset >= argc)
 	{
-		fputws(L"Error: No PID(s) specified. Nothing to do!\n\n", stderr);
+		wprintln(stderr, L"Error: No PID(s) specified. Nothing to do!\n");
 		return EXIT_FAILURE;
 	}
 	if ((argc - argOffset) > MAXIMUM_WAIT_OBJECTS)
@@ -193,7 +190,7 @@ int wmain(int argc, wchar_t *argv[])
 		const BOOL havePrivilege = enablePrivilege(SE_SHUTDOWN_NAME);
 		if ((!havePrivilege) && (!opt_quiet))
 		{
-			fputws(L"Warning: Unable to to acquire SE_SHUTDOWN_NAME privilege!\nThe planned shutdown is probably going to fail.", stderr);
+			wprintln(stderr, L"Warning: Unable to to acquire SE_SHUTDOWN_NAME privilege!\nThe planned shutdown is probably going to fail.\n");
 		}
 	}
 
@@ -221,7 +218,7 @@ int wmain(int argc, wchar_t *argv[])
 	}
 	if ((!opt_quiet) && (procCount < pidCount))
 	{
-		fputws(L"\n", stderr);
+		wprintln(stderr, L"");
 	}
 
 	//Any existing processes found?
@@ -230,7 +227,7 @@ int wmain(int argc, wchar_t *argv[])
 		result = EXIT_SUCCESS;
 		if (!opt_quiet)
 		{
-			fputws(L"No existing processes found. Nothing to do.\n\n", stderr);
+			wprintln(stderr, L"No existing processes found. Nothing to do.\n");
 		}
 		goto success;
 	}
@@ -257,7 +254,7 @@ int wmain(int argc, wchar_t *argv[])
 		result = EXIT_SUCCESS;
 		if (!opt_quiet)
 		{
-			fputws(L"Terminated.\n\n", stderr);
+			wprintln(stderr, L"Terminated.\n");
 		}
 	}
 	else
@@ -267,7 +264,7 @@ int wmain(int argc, wchar_t *argv[])
 			result = EXIT_TIMEOUT;
 			if (!opt_quiet)
 			{
-				fputws(L"Timeout has expired.\n\n", stderr);
+				wprintln(stderr, L"Timeout has expired.\n");
 			}
 		}
 		else
@@ -282,13 +279,13 @@ success:
 	{
 		if (!opt_quiet)
 		{
-			fputws(L"Shutting down the system now...\n", stderr);
+			wprintln(stderr, L"Shutting down the system now...");
 		}
 		if ((error = InitiateShutdownW(NULL, L"Computer shutting down on behalf of WAITPID utility by Muldersoft.", 30U, SHUTDOWN_FLAGS, SHUTDOWN_REASON)) == ERROR_SUCCESS)
 		{
 			if (!opt_quiet)
 			{
-				fputws(L"Shutdown initiated.\n\n", stderr);
+				wprintln(stderr, L"Shutdown initiated.\n");
 			}
 		}
 		else

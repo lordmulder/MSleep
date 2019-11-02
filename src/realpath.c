@@ -18,10 +18,10 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 	switch (dwCtrlTyp)
 	{
 	case CTRL_C_EVENT:
-		fputws(L"Ctrl+C: Realpath has been interrupted !!!\n\n", stderr);
+		wprintln(stderr, L"Ctrl+C: Realpath has been interrupted !!!\n");
 		break;
 	case CTRL_BREAK_EVENT:
-		fputws(L"Break: Realpath has been interrupted !!!\n\n", stderr);
+		wprintln(stderr, L"Break: Realpath has been interrupted !!!\n");
 		break;
 	default:
 		return FALSE;
@@ -41,7 +41,7 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 	{ \
 		if(check_mode && (check_mode != (VAL))) \
 		{ \
-			fputws(L"Error: Options are mutually exclusive!\n\n", stderr); \
+			wprintln(stderr, L"Error: Options are mutually exclusive!\n"); \
 			goto cleanup; \
 		} \
 		check_mode = (VAL); \
@@ -65,17 +65,17 @@ int wmain(int argc, wchar_t *argv[])
 	if ((argc < 2) || (!_wcsicmp(argv[1U], L"/?")) || (!_wcsicmp(argv[1U], L"--help")))
 	{
 		fwprintf(stderr, L"realpath %s\n", PROGRAM_VERSION);
-		fputws(L"Convert file name or relative path into fully qualified \"canonical\" path.\n\n", stderr);
-		fputws(L"Usage:\n", stderr);
-		fputws(L"   realpath.exe [options] <filename_1> [<filename_2> ... <filename_N>]\n\n", stderr);
-		fputws(L"Options:\n", stderr);
-		fputws(L"   --exists     requires the target file system object to exist\n", stderr);
-		fputws(L"   --file       requires the target path to point to a regular file\n", stderr);
-		fputws(L"   --directory  requires the target path to point to a directory\n\n", stderr);
-		fputws(L"Exit status:\n", stderr);
-		fputws(L"   0 - Path converted successfully\n", stderr);
-		fputws(L"   1 - Failed with error\n", stderr);
-		fputws(L"   2 - Interrupted by user\n\n", stderr);
+		wprintln(stderr, L"Convert file name or relative path into fully qualified \"canonical\" path.\n");
+		wprintln(stderr, L"Usage:");
+		wprintln(stderr, L"   realpath.exe [options] <filename_1> [<filename_2> ... <filename_N>]\n");
+		wprintln(stderr, L"Options:");
+		wprintln(stderr, L"   --exists     requires the target file system object to exist");
+		wprintln(stderr, L"   --file       requires the target path to point to a regular file");
+		wprintln(stderr, L"   --directory  requires the target path to point to a directory\n");
+		wprintln(stderr, L"Exit status:");
+		wprintln(stderr, L"   0 - Path converted successfully");
+		wprintln(stderr, L"   1 - Failed with error");
+		wprintln(stderr, L"   2 - Interrupted by user\n");
 		return EXIT_FAILURE;
 	}
 
@@ -97,7 +97,7 @@ int wmain(int argc, wchar_t *argv[])
 	//Check remaining file count
 	if (argOffset >= argc)
 	{
-		fputws(L"Error: No file name specified. Nothing to do!\n\n", stderr);
+		wprintln(stderr, L"Error: No file name specified. Nothing to do!\n");
 		return EXIT_FAILURE;
 	}
 

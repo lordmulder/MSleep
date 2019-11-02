@@ -28,10 +28,10 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 	switch (dwCtrlTyp)
 	{
 	case CTRL_C_EVENT:
-		fputws(L"Ctrl+C: MSleep has been interrupted !!!\n\n", stderr);
+		wprintln(stderr, L"Ctrl+C: MSleep has been interrupted !!!\n");
 		break;
 	case CTRL_BREAK_EVENT:
-		fputws(L"Break: MSleep has been interrupted !!!\n\n", stderr);
+		wprintln(stderr, L"Break: MSleep has been interrupted !!!\n");
 		break;
 	default:
 		return FALSE;
@@ -58,21 +58,21 @@ int wmain(int argc, wchar_t *argv[])
 	if ((argc < 2) || (!_wcsicmp(argv[1U], L"/?")) || (!_wcsicmp(argv[1U], L"--help")))
 	{
 		fwprintf(stderr, L"msleep %s\n", PROGRAM_VERSION);
-		fputws(L"Wait (sleep) for the specified amount of time, in milliseconds.\n\n", stderr);
-		fputws(L"Usage:\n", stderr);
-		fputws(L"   msleep.exe <timeout_ms>\n\n", stderr);
-		fputws(L"Exit status:\n", stderr);
-		fputws(L"   0 - Timeout expired normally\n", stderr);
-		fputws(L"   1 - Failed with error\n", stderr);
-		fputws(L"   2 - Interrupted by user\n\n", stderr);
-		fputws(L"Note: Process creation overhead will be measured and compensated.\n\n", stderr);
+		wprintln(stderr, L"Wait (sleep) for the specified amount of time, in milliseconds.\n");
+		wprintln(stderr, L"Usage:");
+		wprintln(stderr, L"   msleep.exe <timeout_ms>\n");
+		wprintln(stderr, L"Exit status:");
+		wprintln(stderr, L"   0 - Timeout expired normally");
+		wprintln(stderr, L"   1 - Failed with error");
+		wprintln(stderr, L"   2 - Interrupted by user\n");
+		wprintln(stderr, L"Note: Process creation overhead will be measured and compensated.\n");
 		return EXIT_FAILURE;
 	}
 
 	//Check argument count
 	if (argc > 2)
 	{
-		fputws(L"Error: Found excess command-line argument!\n", stderr);
+		wprintln(stderr, L"Error: Found excess command-line argument!\n");
 		return EXIT_FAILURE;
 	}
 
@@ -82,10 +82,10 @@ int wmain(int argc, wchar_t *argv[])
 		switch (error)
 		{
 		case ERANGE:
-			fputws(L"Error: Given timeout value is out of range!\n\n", stderr);
+			wprintln(stderr, L"Error: Given timeout value is out of range!\n");
 			return EXIT_FAILURE;
 		default:
-			fputws(L"Error: Given timeout value could not be parsed!\n\n", stderr);
+			wprintln(stderr, L"Error: Given timeout value could not be parsed!\n");
 			return EXIT_FAILURE;
 		}
 	}

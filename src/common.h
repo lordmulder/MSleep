@@ -39,6 +39,12 @@ const wchar_t* getCanonicalPath(const wchar_t *const fileName);
 const wchar_t* getDirectoryPart(const wchar_t *const fullPath);
 const wchar_t* getEnvironmentString(const wchar_t *const name);
 
+/* print line */
+static int __inline wprintln(FILE *const stream, const wchar_t *text)
+{
+	return fwprintf(stream, L"%s\n", text);
+}
+
 /* initialize CRT */
 #define INITIALIZE_C_RUNTIME() do \
 { \

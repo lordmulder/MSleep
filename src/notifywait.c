@@ -18,10 +18,10 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 	switch (dwCtrlTyp)
 	{
 	case CTRL_C_EVENT:
-		fputws(L"Ctrl+C: Notifywait has been interrupted !!!\n\n", stderr);
+		wprintln(stderr, L"Ctrl+C: Notifywait has been interrupted !!!\n");
 		break;
 	case CTRL_BREAK_EVENT:
-		fputws(L"Break: Notifywait has been interrupted !!!\n\n", stderr);
+		wprintln(stderr, L"Break: Notifywait has been interrupted !!!\n");
 		break;
 	default:
 		return FALSE;
@@ -111,22 +111,22 @@ int wmain(int argc, wchar_t *argv[])
 	if ((argc < 2) || (!_wcsicmp(argv[1U], L"/?")) || (!_wcsicmp(argv[1U], L"--help")))
 	{
 		fwprintf(stderr, L"notifywait %s\n", PROGRAM_VERSION);
-		fputws(L"Wait until a file is changed. File changes are detected via \"archive\" bit.\n\n", stderr);
-		fputws(L"Usage:\n", stderr);
-		fputws(L"   notifywait.exe [options] <filename_1> [<filename_2> ... <filename_N>]\n\n", stderr);
-		fputws(L"Options:\n", stderr);
-		fputws(L"   --clear  unset the \"archive\" bit *before* monitoring for file changes\n", stderr);
-		fputws(L"   --reset  unset the \"archive\" bit *after* a file change was detected\n", stderr);
-		fputws(L"   --quiet  do *not* print the file name that changed to standard output\n", stderr);
-		fputws(L"   --debug  turn *on* additional diagnostic output (for testing only!)\n\n", stderr);
-		fputws(L"Exit status:\n", stderr);
-		fputws(L"   0 - File change was detected\n", stderr);
-		fputws(L"   1 - Failed with error\n", stderr);
-		fputws(L"   2 - Interrupted by user\n\n", stderr);
-		fputws(L"Remarks:\n", stderr);
-		fputws(L"   The operating system sets the \"archive\" bit whenever a file is changed.\n", stderr);
-		fputws(L"   If, initially, the \"archive\" bit is set, program terminates right away.\n", stderr);
-		fputws(L"   If *multiple* files are given, program terminates on *any* file change.\n\n", stderr);
+		wprintln(stderr, L"Wait until a file is changed. File changes are detected via \"archive\" bit.\n");
+		wprintln(stderr, L"Usage:");
+		wprintln(stderr, L"   notifywait.exe [options] <filename_1> [<filename_2> ... <filename_N>]\n");
+		wprintln(stderr, L"Options:");
+		wprintln(stderr, L"   --clear  unset the \"archive\" bit *before* monitoring for file changes");
+		wprintln(stderr, L"   --reset  unset the \"archive\" bit *after* a file change was detected");
+		wprintln(stderr, L"   --quiet  do *not* print the file name that changed to standard output");
+		wprintln(stderr, L"   --debug  turn *on* additional diagnostic output (for testing only!)\n");
+		wprintln(stderr, L"Exit status:");
+		wprintln(stderr, L"   0 - File change was detected");
+		wprintln(stderr, L"   1 - Failed with error");
+		wprintln(stderr, L"   2 - Interrupted by user\n");
+		wprintln(stderr, L"Remarks:");
+		wprintln(stderr, L"   The operating system sets the \"archive\" bit whenever a file is changed.");
+		wprintln(stderr, L"   If, initially, the \"archive\" bit is set, program terminates right away.");
+		wprintln(stderr, L"   If *multiple* files are given, program terminates on *any* file change.\n");
 		return EXIT_FAILURE;
 	}
 
@@ -149,7 +149,7 @@ int wmain(int argc, wchar_t *argv[])
 	//Check remaining file count
 	if (argOffset >= argc)
 	{
-		fputws(L"Error: No file name(s) specified. Nothing to do!\n\n", stderr);
+		wprintln(stderr, L"Error: No file name(s) specified. Nothing to do!\n");
 		return EXIT_FAILURE;
 	}
 	if ((argc - argOffset) > MAXIMUM_FILES)
@@ -263,7 +263,7 @@ int wmain(int argc, wchar_t *argv[])
 				fwprintf(stderr, L"   %02d: %s\n", fileIdx, fullPath[dirToFilesMap[dirIdx].files[fileIdx]]);
 			}
 		}
-		fputws(L"\n", stderr);
+		wprintln(stderr, L"");
 	}
 
 	//Install file system watcher
@@ -272,7 +272,7 @@ int wmain(int argc, wchar_t *argv[])
 		notifyHandle[dirIdx] = FindFirstChangeNotificationW(directoryPath[dirIdx], FALSE, NOTIFY_FLAGS);
 		if (notifyHandle[dirIdx] == INVALID_HANDLE_VALUE)
 		{
-			fputws(L"System Error: Failed to install the file watcher!\n\n", stderr);
+			wprintln(stderr, L"System Error: Failed to install the file watcher!\n");
 			goto cleanup;
 		}
 	}
@@ -308,7 +308,7 @@ int wmain(int argc, wchar_t *argv[])
 			//Request the *next* notification
 			if (!FindNextChangeNotification(notifyHandle[notifyIdx]))
 			{
-				fputws(L"Error: Failed to request next notification!\n\n", stderr);
+				wprintln(stderr, L"Error: Failed to request next notification!\n");
 				goto cleanup;
 			}
 		}
@@ -322,7 +322,7 @@ int wmain(int argc, wchar_t *argv[])
 		}
 		else
 		{
-			fputws(L"System Error: Failed to wait for notification!\n\n", stderr);
+			wprintln(stderr, L"System Error: Failed to wait for notification!\n");
 			goto cleanup;
 		}
 	}
