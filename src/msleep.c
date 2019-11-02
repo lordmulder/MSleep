@@ -46,7 +46,7 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 /* MAIN                                                                    */
 /* ======================================================================= */
 
-int _wmain(int argc, wchar_t *argv[])
+int wmain(int argc, wchar_t *argv[])
 {
 	int error;
 	unsigned long timeout, delta;

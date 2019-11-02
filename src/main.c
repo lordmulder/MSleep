@@ -9,7 +9,7 @@
 
 #include <stdlib.h>
 
-#ifdef ENABLE_VC6_WORKAROUNDS
+#ifdef ENABLE_CUSTOM_ENTRYPOINT
 
 typedef struct
 {
@@ -26,13 +26,13 @@ int __declspec(dllimport) __cdecl __wgetmainargs
 	_startupinfo * _StartInfo
 );
 
-int _wmain
+int wmain
 (
 	int argc,
 	wchar_t *argv[]
 );
 
-int main()
+int my_startup()
 {
 	int argc = 0;
 	wchar_t **argv = NULL, **env = NULL;
@@ -43,7 +43,7 @@ int main()
 		abort(); /*__wgetmainargs has failed!*/
 	}
 
-	return _wmain(argc, argv);
+	return wmain(argc, argv);
 }
 
 #endif //ENABLE_VC6_WORKAROUNDS

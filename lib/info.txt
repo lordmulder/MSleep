@@ -1,0 +1,2 @@
+msvcrt_x86.lib - import library for system-provided MSVCRT.DLL (x86), borrowed from VC 6.0
+msvcrt_x64.lib - import library for system-provided MSVCRT.DLL (x64), generated from MSVCRT.DLL as found in Windows XP (x64 edition)

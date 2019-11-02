@@ -74,7 +74,7 @@ static BOOL enablePrivilege(const wchar_t *const privilegeName)
 static DWORD pids[MAXIMUM_WAIT_OBJECTS];
 static HANDLE procHandles[MAXIMUM_WAIT_OBJECTS];
 
-int _wmain(int argc, wchar_t *argv[])
+int wmain(int argc, wchar_t *argv[])
 {
 	int result = EXIT_FAILURE, argOffset = 1;
 	BOOL opt_shutdown = FALSE, opt_waitone = FALSE, opt_pedantic = FALSE, opt_timeout = FALSE, opt_quiet = FALSE;

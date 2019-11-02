@@ -99,7 +99,7 @@ static unsigned long long lastModTs[MAXIMUM_FILES];
 static fileIndex_list dirToFilesMap[MAXIMUM_FILES];
 static HANDLE notifyHandle[MAXIMUM_FILES];
 
-int _wmain(int argc, wchar_t *argv[])
+int wmain(int argc, wchar_t *argv[])
 {
 	BOOL opt_clear = FALSE, opt_reset = FALSE, opt_quiet = FALSE, opt_debug = FALSE;
 	int result = EXIT_FAILURE, argOffset = 1, fileCount = 0, fileIdx = 0, dirCount = 0, dirIdx = 0;

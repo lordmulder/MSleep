@@ -23,8 +23,6 @@ _CRTIMP extern FILE _iob[];
 #undef stderr
 #define stdout (&_iob[1])
 #define stderr (&_iob[2])
-#else
-#define _wmain wmain
 #endif
 
 int parseULong(const wchar_t *str, ULONG *const out);
