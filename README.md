@@ -112,7 +112,7 @@ Official source code mirrors:
 
 * `git clone https://github.com/lordmulder/MSleep.git` [[Browse](https://github.com/lordmulder/MSleep)]
 
-* `git clone https://muldersoft@bitbucket.org/muldersoft/msleep.git` [[Browse](https://bitbucket.org/muldersoft/msleep)]
+* `git clone git clone https://bitbucket.org/muldersoft/msleep.git` [[Browse](https://bitbucket.org/muldersoft/msleep)]
 
 
 License
