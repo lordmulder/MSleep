@@ -9,10 +9,20 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 #include "common.h"
+#include "version.h"
 
 #include <stdlib.h>
 #include <wchar.h>
 #include <Shlwapi.h>
+
+/* ======================================================================= */
+/* PROGRAM VERSION                                                         */
+/* ======================================================================= */
+
+#define _WSTR_(X) L##X
+#define WSTR(X) _WSTR_(X)
+
+const wchar_t *const PROGRAM_VERSION = WSTR(VER_MSLEEP_STR) L" [" WSTR(__DATE__) L"]";
 
 /* ======================================================================= */
 /* PARSE UNSIGNED LONG                                                     */

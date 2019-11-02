@@ -55,9 +55,9 @@ int wmain(int argc, wchar_t *argv[])
 	INITIALIZE_C_RUNTIME();
 
 	//Check command-line arguments
-	if (argc < 2)
+	if ((argc < 2) || (!_wcsicmp(argv[1U], L"/?")) || (!_wcsicmp(argv[1U], L"--help")))
 	{
-		fputws(L"msleep [" TEXT(__DATE__) L"]\n", stderr);
+		fwprintf(stderr, L"msleep %s\n", PROGRAM_VERSION);
 		fputws(L"Wait (sleep) for the specified amount of time, in milliseconds.\n\n", stderr);
 		fputws(L"Usage:\n", stderr);
 		fputws(L"   msleep.exe <timeout_ms>\n\n", stderr);

@@ -54,10 +54,12 @@ static BOOL enablePrivilege(const wchar_t *const privilegeName)
 /* HELPER MACROS AND TYPES                                                 */
 /* ======================================================================= */
 
-#define EXIT_TIMEOUT  2 /*exit code when timeout occrus*/
+#define EXIT_TIMEOUT 2 /*exit code when timeout occrus*/
+#define PID_MASK (~((DWORD)0x3))
 
 #define SHUTDOWN_FLAGS (SHUTDOWN_FORCE_OTHERS | SHUTDOWN_FORCE_SELF | SHUTDOWN_POWEROFF)
 #define SHUTDOWN_REASON (SHTDN_REASON_MAJOR_OTHER | SHTDN_REASON_MINOR_OTHER | SHUTDOWN_POWEROFF | SHTDN_REASON_FLAG_PLANNED)
+
 
 #define TRY_PARSE_OPTION(NAME) \
 	if (!_wcsicmp(argv[argOffset] + 2U, L#NAME)) \
@@ -78,7 +80,7 @@ int wmain(int argc, wchar_t *argv[])
 {
 	int result = EXIT_FAILURE, argOffset = 1;
 	BOOL opt_shutdown = FALSE, opt_waitone = FALSE, opt_pedantic = FALSE, opt_timeout = FALSE, opt_quiet = FALSE;
-	DWORD idx, error, pidCount = 0U, procCount = 0U, timeout = 0U, waitStatus = MAXDWORD;
+	DWORD idx, error, pidCount = 0U, procCount = 0U, timeout = 30000U, waitStatus = MAXDWORD;
 
 	//Initialize
 	SetErrorMode(SetErrorMode(0x0003) | 0x0003);
@@ -88,9 +90,9 @@ int wmain(int argc, wchar_t *argv[])
 	_setmode(_fileno(stderr), _O_U8TEXT);
 
 	//Check command-line arguments
-	if (argc < 2)
+	if ((argc < 2) || (!_wcsicmp(argv[1U], L"/?")) || (!_wcsicmp(argv[1U], L"--help")))
 	{
-		fputws(L"waitpid [" TEXT(__DATE__) L"]\n", stderr);
+		fwprintf(stderr, L"waitpid %s\n", PROGRAM_VERSION);
 		fputws(L"Wait (sleep) until the specified processes all have terminated.\n\n", stderr);
 		fputws(L"Usage:\n   waitpid.exe [options] <PID_1> [<PID_2> ... <PID_n>]\n\n", stderr);
 		fputws(L"Options:\n", stderr);
@@ -130,8 +132,7 @@ int wmain(int argc, wchar_t *argv[])
 	if (opt_timeout)
 	{
 		const WCHAR *const envstr = getEnvironmentString(L"WAITPID_TIMEOUT");
-		timeout = 30000U;
-		if (envstr && envstr[0U])
+		if (envstr)
 		{
 			DWORD value;
 			if (parseULong(envstr, &value) || (value < 1U) || (value == INFINITE))
@@ -168,18 +169,21 @@ int wmain(int argc, wchar_t *argv[])
 			fwprintf(stderr, L"Error: Specified PID \"%s\"is invalid!\n\n", argv[argOffset]);
 			return EXIT_FAILURE;
 		}
-		currentPid &= ~0x3L;
 		for (idx = 0U; idx < pidCount; ++idx)
 		{
-			if (pids[idx] == currentPid)
+			if (pids[idx] == (currentPid & PID_MASK))
 			{
+				if(!opt_quiet)
+				{
+					fwprintf(stderr, L"Redundant PID #%u ignored.\n\n", currentPid);
+				}
 				duplicate = TRUE;
 				break;
 			}
 		}
 		if (!duplicate)
 		{
-			pids[pidCount++] = currentPid;
+			pids[pidCount++] = (currentPid & PID_MASK);
 		}
 	}
 

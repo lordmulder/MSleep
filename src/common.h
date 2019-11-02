@@ -16,6 +16,8 @@
 #include <io.h>
 #include <fcntl.h>
 
+extern const wchar_t *const PROGRAM_VERSION;
+
 //VC 6.0 workaround
 #ifdef ENABLE_VC6_WORKAROUNDS
 _CRTIMP extern FILE _iob[];

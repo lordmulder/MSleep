@@ -108,9 +108,9 @@ int wmain(int argc, wchar_t *argv[])
 	INITIALIZE_C_RUNTIME();
 
 	//Check command-line arguments
-	if (argc < 2)
+	if ((argc < 2) || (!_wcsicmp(argv[1U], L"/?")) || (!_wcsicmp(argv[1U], L"--help")))
 	{
-		fputws(L"notifywait [" TEXT(__DATE__) L"]\n", stderr);
+		fwprintf(stderr, L"notifywait %s\n", PROGRAM_VERSION);
 		fputws(L"Wait until a file is changed. File changes are detected via \"archive\" bit.\n\n", stderr);
 		fputws(L"Usage:\n", stderr);
 		fputws(L"   notifywait.exe [options] <filename_1> [<filename_2> ... <filename_N>]\n\n", stderr);
