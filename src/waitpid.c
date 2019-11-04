@@ -32,34 +32,13 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 	return TRUE;
 }
 
-static BOOL enablePrivilege(const wchar_t *const privilegeName)
-{
-	BOOL success = FALSE;
-	HANDLE hToken;
-	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
-	{
-		TOKEN_PRIVILEGES tkp;
-		if (LookupPrivilegeValueW(NULL, privilegeName, &tkp.Privileges[0].Luid))
-		{
-			tkp.PrivilegeCount = 1;
-			tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-			success = AdjustTokenPrivileges(hToken, FALSE, &tkp, 0, (PTOKEN_PRIVILEGES)NULL, 0);
-		}
-		CloseHandle(hToken);
-	}
-	return success;
-}
-
 /* ======================================================================= */
 /* HELPER MACROS AND TYPES                                                 */
 /* ======================================================================= */
 
 #define EXIT_TIMEOUT 2 /*exit code when timeout occrus*/
 #define PID_MASK (~((DWORD)0x3))
-
-#define SHUTDOWN_FLAGS (SHUTDOWN_FORCE_OTHERS | SHUTDOWN_FORCE_SELF | SHUTDOWN_POWEROFF)
 #define SHUTDOWN_REASON (SHTDN_REASON_MAJOR_OTHER | SHTDN_REASON_MINOR_OTHER | SHUTDOWN_POWEROFF | SHTDN_REASON_FLAG_PLANNED)
-
 
 #define TRY_PARSE_OPTION(NAME) \
 	if (!_wcsicmp(argv[argOffset] + 2U, L#NAME)) \
@@ -184,16 +163,6 @@ int wmain(int argc, wchar_t *argv[])
 		}
 	}
 
-	//Enable the SE_SHUTDOWN_NAME privilege for this process (if needed)
-	if (opt_shutdown)
-	{
-		const BOOL havePrivilege = enablePrivilege(SE_SHUTDOWN_NAME);
-		if ((!havePrivilege) && (!opt_quiet))
-		{
-			wprintln(stderr, L"Warning: Unable to to acquire SE_SHUTDOWN_NAME privilege!\nThe planned shutdown is probably going to fail.\n");
-		}
-	}
-
 	//Open all specified processes
 	for (idx = 0U; idx < pidCount; ++idx)
 	{
@@ -281,7 +250,7 @@ success:
 		{
 			wprintln(stderr, L"Shutting down the system now...");
 		}
-		if ((error = InitiateShutdownW(NULL, L"Computer shutting down on behalf of WAITPID utility by Muldersoft.", 30U, SHUTDOWN_FLAGS, SHUTDOWN_REASON)) == ERROR_SUCCESS)
+		if ((error = shutdownComputer(L"Computer shutting down on behalf of WAITPID utility by Muldersoft.", 30U, SHUTDOWN_REASON)) == ERROR_SUCCESS)
 		{
 			if (!opt_quiet)
 			{

@@ -224,6 +224,10 @@ static const wchar_t* getFinalPathName(const wchar_t *const fileName)
 			getFinalPathNamePtr = (PGETFINALPATHNAMEBYHANDLEW) GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetFinalPathNameByHandleW");
 			InterlockedExchange(&getFinalPathNameInit, 1L);
 		}
+		else
+		{
+			Sleep(0U); /*wait for initialized*/
+		}
 	}
 
 	//Is available?
@@ -396,4 +400,64 @@ const wchar_t* getEnvironmentString(const wchar_t *const name)
 		return _wcsdup(envstr);
 	}
 	return NULL;
+}
+
+/* ======================================================================= */
+/* SHUTDOWN COMPUTER                                                       */
+/* ======================================================================= */
+
+typedef DWORD (WINAPI *PINITIATESHUTDOWNW)(LPWSTR lpMachineName, LPWSTR lpMessage, DWORD  dwGracePeriod, DWORD  dwShutdownFlags, DWORD  dwReason);
+static volatile LONG initiateShutdownInit = 0L;
+static PINITIATESHUTDOWNW initiateShutdownPtr = NULL;
+
+static BOOL enablePrivilege(const wchar_t *const privilegeName)
+{
+	BOOL success = FALSE;
+	HANDLE hToken;
+	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
+	{
+		TOKEN_PRIVILEGES tkp;
+		if (LookupPrivilegeValueW(NULL, privilegeName, &tkp.Privileges[0].Luid))
+		{
+			tkp.PrivilegeCount = 1;
+			tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+			success = AdjustTokenPrivileges(hToken, FALSE, &tkp, 0, (PTOKEN_PRIVILEGES)NULL, 0);
+		}
+		CloseHandle(hToken);
+	}
+	return success;
+}
+
+DWORD shutdownComputer(const wchar_t *const message, const DWORD timeout, const DWORD reason)
+{
+	LONG loop = 0L;
+
+	//Initialize on first call
+	while ((loop = InterlockedCompareExchange(&initiateShutdownInit, -1L, 0L)) != 1L)
+	{
+		if(!loop) /*first thread initializes*/
+		{
+			initiateShutdownPtr = (PINITIATESHUTDOWNW) GetProcAddress(GetModuleHandleW(L"advapi32.dll"), "InitiateShutdownW");
+			enablePrivilege(SE_SHUTDOWN_NAME);
+			InterlockedExchange(&initiateShutdownInit, 1L);
+		}
+		else
+		{
+			Sleep(0U); /*wait for initialized*/
+		}
+	}
+
+	//Is available?
+	if (initiateShutdownPtr)
+	{
+		return initiateShutdownPtr(NULL, (LPWSTR)message, timeout, SHUTDOWN_FORCE_OTHERS | SHUTDOWN_FORCE_SELF | SHUTDOWN_POWEROFF, reason);
+	}
+	
+	//Fallback mode
+	if(ExitWindowsEx(EWX_SHUTDOWN | EWX_FORCE, reason))
+	{
+		return ERROR_SUCCESS;
+	}
+
+	return GetLastError(); /*failure*/
 }

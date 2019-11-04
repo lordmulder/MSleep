@@ -39,6 +39,8 @@ const wchar_t* getCanonicalPath(const wchar_t *const fileName);
 const wchar_t* getDirectoryPart(const wchar_t *const fullPath);
 const wchar_t* getEnvironmentString(const wchar_t *const name);
 
+DWORD shutdownComputer(const wchar_t *const message, const DWORD timeout, const DWORD reason);
+
 /* print line */
 static int __inline wprintln(FILE *const stream, const wchar_t *text)
 {
