@@ -142,7 +142,7 @@ int wmain(int argc, wchar_t *argv[])
 		DWORD currentPid;
 		if (parseULong(argv[argOffset], &currentPid))
 		{
-			fwprintf(stderr, L"Error: Specified PID \"%s\"is invalid!\n\n", argv[argOffset]);
+			fwprintf(stderr, L"Error: Specified PID \"%s\" is invalid!\n\n", argv[argOffset]);
 			return EXIT_FAILURE;
 		}
 		for (idx = 0U; idx < pidCount; ++idx)
