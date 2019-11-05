@@ -20,7 +20,7 @@ extern const wchar_t *const PROGRAM_VERSION;
 
 //VC 6.0 workaround
 #ifdef ENABLE_VC6_WORKAROUNDS
-_CRTIMP extern FILE _iob[];
+__declspec(dllimport) extern FILE _iob[];
 #undef stdout
 #undef stderr
 #define stdout (&_iob[1])

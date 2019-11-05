@@ -20,7 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\common.c" />
-    <ClCompile Include="src\main.c" />
+    <ClCompile Include="src\init.c" />
     <ClCompile Include="src\realpath.c" />
   </ItemGroup>
   <ItemGroup>
@@ -154,7 +154,7 @@
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>false</DataExecutionPrevention>
       <AdditionalOptions>/ignore:4254 %(AdditionalOptions)</AdditionalOptions>
-      <EntryPointSymbol>my_startup</EntryPointSymbol>
+      <EntryPointSymbol>_startup</EntryPointSymbol>
     </Link>
     <Manifest />
     <Manifest>
@@ -193,7 +193,7 @@
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>false</DataExecutionPrevention>
       <AdditionalOptions>/ignore:4254 %(AdditionalOptions)</AdditionalOptions>
-      <EntryPointSymbol>my_startup</EntryPointSymbol>
+      <EntryPointSymbol>_startup</EntryPointSymbol>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
     </Link>
     <Manifest />

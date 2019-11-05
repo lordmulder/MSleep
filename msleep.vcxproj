@@ -20,7 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\common.c" />
-    <ClCompile Include="src\main.c" />
+    <ClCompile Include="src\init.c" />
     <ClCompile Include="src\msleep.c" />
   </ItemGroup>
   <ItemGroup>
@@ -156,7 +156,7 @@
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
       <AdditionalOptions>/ignore:4254 %(AdditionalOptions)</AdditionalOptions>
-      <EntryPointSymbol>my_startup</EntryPointSymbol>
+      <EntryPointSymbol>_startup</EntryPointSymbol>
     </Link>
     <ProjectReference />
     <Manifest />
@@ -199,7 +199,7 @@
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
       <AdditionalOptions>/ignore:4254 %(AdditionalOptions)</AdditionalOptions>
-      <EntryPointSymbol>my_startup</EntryPointSymbol>
+      <EntryPointSymbol>_startup</EntryPointSymbol>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
     </Link>
     <ProjectReference />

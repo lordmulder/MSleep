@@ -18,10 +18,10 @@
     <ClCompile Include="src\common.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\main.c">
+    <ClCompile Include="src\waitpid.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\waitpid.c">
+    <ClCompile Include="src\init.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
