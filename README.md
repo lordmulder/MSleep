@@ -32,7 +32,7 @@ Wait until a file is changed. File changes are detected via "archive" bit.
 
 ```
 Usage:
-   notifywait.exe [options] <filename_1> [<filename_2> ... <filename_N>]
+   notifywait.exe [options] <name_1> [<name_2> ... <name_N>]
 
 Options:
    --clear  unset the "archive" bit *before* monitoring for file changes
@@ -47,8 +47,10 @@ Exit status:
 
 Remarks:
    The operating system sets the "archive" bit whenever a file is changed.
-   If, initially, the "archive" bit is set, program terminates right away.
-   If *multiple* files are given, program terminates on *any* file change.
+   If a file's "archive" bit is already set, a change is detected right away.
+   Either clear the "archive" bit beforehand, or use the --clear option!
+   If *multiple* files are given, the program detects changes in *any* file.
+   If a directory is given, *any* changes in that directory are detected.
 ```
 
 realpath
