@@ -50,12 +50,7 @@ static BOOL __stdcall crtlHandler(DWORD dwCtrlTyp)
 { \
 	unsigned long long _timeStamp; \
 	const DWORD _attribs = getAttributes(fullPath[(IDX)], &_timeStamp); \
-	if ((_attribs == INVALID_FILE_ATTRIBUTES) || (_attribs & FILE_ATTRIBUTE_DIRECTORY)) \
-	{ \
-		fwprintf(stderr, L"Error: File \"%s\" does not exist anymore!\n\n", fullPath[(IDX)]); \
-		goto cleanup; \
-	} \
-	if ((_attribs & FILE_ATTRIBUTE_ARCHIVE) || (_timeStamp != lastModTs[(IDX)])) \
+	if ((_attribs == INVALID_FILE_ATTRIBUTES) || (_attribs & FILE_ATTRIBUTE_DIRECTORY) || (_attribs & FILE_ATTRIBUTE_ARCHIVE) || (_timeStamp != lastModTs[(IDX)])) \
 	{ \
 		if (!opt_quiet) \
 		{ \
@@ -88,12 +83,15 @@ typedef struct
 }
 fileIndex_list;
 
+#define BOOLIFY(X) (!(!(X)))
+
 /* ======================================================================= */
 /* MAIN                                                                    */
 /* ======================================================================= */
 
 /*Globals*/
 static const wchar_t *fullPath[MAXIMUM_FILES];
+static BOOL directory[MAXIMUM_FILES];
 static const wchar_t* directoryPath[MAXIMUM_FILES];
 static unsigned long long lastModTs[MAXIMUM_FILES];
 static fileIndex_list dirToFilesMap[MAXIMUM_FILES];
@@ -113,7 +111,7 @@ int wmain(int argc, wchar_t *argv[])
 		fwprintf(stderr, L"notifywait %s\n", PROGRAM_VERSION);
 		wprintln(stderr, L"Wait until a file is changed. File changes are detected via \"archive\" bit.\n");
 		wprintln(stderr, L"Usage:");
-		wprintln(stderr, L"   notifywait.exe [options] <filename_1> [<filename_2> ... <filename_N>]\n");
+		wprintln(stderr, L"   notifywait.exe [options] <name_1> [<name_2> ... <name_N>]\n");
 		wprintln(stderr, L"Options:");
 		wprintln(stderr, L"   --clear  unset the \"archive\" bit *before* monitoring for file changes");
 		wprintln(stderr, L"   --reset  unset the \"archive\" bit *after* a file change was detected");
@@ -125,8 +123,10 @@ int wmain(int argc, wchar_t *argv[])
 		wprintln(stderr, L"   2 - Interrupted by user\n");
 		wprintln(stderr, L"Remarks:");
 		wprintln(stderr, L"   The operating system sets the \"archive\" bit whenever a file is changed.");
-		wprintln(stderr, L"   If, initially, the \"archive\" bit is set, program terminates right away.");
-		wprintln(stderr, L"   If *multiple* files are given, program terminates on *any* file change.\n");
+		wprintln(stderr, L"   If a file's \"archive\" bit is already set, a change is detected right away.");
+		wprintln(stderr, L"   Either clear the \"archive\" bit beforehand, or use the --clear option!");
+		wprintln(stderr, L"   If *multiple* files are given, the program detects changes in *any* file.");
+		wprintln(stderr, L"   If a directory is given, *any* changes in that directory are detected.\n");
 		return EXIT_FAILURE;
 	}
 
@@ -195,12 +195,8 @@ int wmain(int argc, wchar_t *argv[])
 			fwprintf(stderr, L"Error: File \"%s\" not found or access denied!\n\n", fullPath[fileIdx]);
 			goto cleanup;
 		}
-		if (attribs & FILE_ATTRIBUTE_DIRECTORY)
-		{
-			fwprintf(stderr, L"Error: Path \"%s\" points to a directory!\n\n", fullPath[fileIdx]);
-			goto cleanup;
-		}
-		if ((!opt_clear) && (attribs & FILE_ATTRIBUTE_ARCHIVE))
+		directory[fileIdx] = BOOLIFY(attribs & FILE_ATTRIBUTE_DIRECTORY);
+		if ((!directory[fileIdx]) && (!opt_clear) && (attribs & FILE_ATTRIBUTE_ARCHIVE))
 		{
 			if (!opt_quiet)
 			{
@@ -215,9 +211,12 @@ int wmain(int argc, wchar_t *argv[])
 	{
 		for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 		{
-			if (!clearAttribute(fullPath[fileIdx], FILE_ATTRIBUTE_ARCHIVE))
+			if (!directory[fileIdx])
 			{
-				fwprintf(stderr, L"Warning: File \"%s\" could not be cleared!\n\n", fullPath[fileIdx]);
+				if (!clearAttribute(fullPath[fileIdx], FILE_ATTRIBUTE_ARCHIVE))
+				{
+					fwprintf(stderr, L"Warning: File \"%s\" could not be cleared!\n\n", fullPath[fileIdx]);
+				}
 			}
 		}
 	}
@@ -226,7 +225,7 @@ int wmain(int argc, wchar_t *argv[])
 	for(fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 	{
 		BOOL duplicate = FALSE;
-		const wchar_t *const directoryNext = getDirectoryPart(fullPath[fileIdx]);
+		const wchar_t *const directoryNext = (!directory[fileIdx]) ? getDirectoryPart(fullPath[fileIdx]) : _wcsdup(fullPath[fileIdx]);
 		if (!directoryNext)
 		{
 			fwprintf(stderr, L"Error: Directory part of \"%s\" could not be determined!\n\n", fullPath[fileIdx]);
@@ -277,10 +276,13 @@ int wmain(int argc, wchar_t *argv[])
 		}
 	}
 
-	//Has any file been modified?
+	//Has any file been modified already?
 	for (fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 	{
-		CHECK_IF_MODFIED(fileIdx);
+		if (!directory[fileIdx])
+		{
+			CHECK_IF_MODFIED(fileIdx);
+		}
 	}
 
 	//Wait until a file has been modified
@@ -317,7 +319,10 @@ int wmain(int argc, wchar_t *argv[])
 			//Timeout encountered, check all files!
 			for (fileIdx = 0; fileIdx < fileCount; ++fileIdx)
 			{
-				CHECK_IF_MODFIED(fileIdx);
+				if (!directory[fileIdx])
+				{
+					CHECK_IF_MODFIED(fileIdx);
+				}
 			}
 		}
 		else

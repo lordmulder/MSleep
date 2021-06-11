@@ -15,7 +15,7 @@
 
 #define VER_MSLEEP_MAJOR      1
 #define VER_MSLEEP_MINOR_HI   0
-#define VER_MSLEEP_MINOR_LO   5
+#define VER_MSLEEP_MINOR_LO   6
 #define VER_MSLEEP_PATCH      0
 
 ///////////////////////////////////////////////////////////////////////////////
