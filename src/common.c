@@ -373,16 +373,49 @@ const wchar_t* getCanonicalPath(const wchar_t *const fileName)
 /* GET DIRECTORY PART                                                      */
 /* ======================================================================= */
 
+static void remove_filespec(wchar_t *pathstr)
+{
+	wchar_t *filespec = pathstr;
+
+	if ((*pathstr == L'\\') || (*pathstr == L'/'))
+	{
+		filespec = ++pathstr;
+	}
+	if ((*pathstr == L'\\') || (*pathstr == L'/'))
+	{
+		filespec = ++pathstr;
+	}
+
+	while (*pathstr)
+	{
+		if ((*pathstr == L'\\') || (*pathstr == L'/'))
+		{
+			filespec = pathstr;
+		}
+		else if (*pathstr == L':')
+		{
+			filespec = ++pathstr;
+			if ((*pathstr == L'\\') || (*pathstr == L'/'))
+			{
+				filespec++;
+			}
+		}
+		pathstr++;
+	}
+
+	if (*filespec)
+	{
+		*filespec = L'\0';
+	}
+}
+
 const wchar_t* getDirectoryPart(const wchar_t *const fullPath)
 {
 	wchar_t *const buffer = _wcsdup(fullPath);
 	if (buffer)
 	{
-		if (PathRemoveFileSpecW(buffer))
-		{
-			return buffer;
-		}
-		free((void*)buffer); /*clean-up*/
+		remove_filespec(buffer);
+		return buffer;
 	}
 
 	return NULL;
